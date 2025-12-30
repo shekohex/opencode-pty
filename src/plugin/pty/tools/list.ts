@@ -1,5 +1,5 @@
 import { tool } from "@opencode-ai/plugin";
-import { manager } from "../manager.ts";
+import { manager } from "../../../core/manager.ts";
 import DESCRIPTION from "./list.txt";
 
 export const ptyList = tool({

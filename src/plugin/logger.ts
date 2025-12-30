@@ -1,52 +1,18 @@
+import { setLogHandler, createLogger as coreCreateLogger, type Logger } from "../core/logger.ts";
 import type { PluginClient } from "./types.ts";
 
-type LogLevel = "debug" | "info" | "warn" | "error";
-
-interface Logger {
-  debug(message: string, extra?: Record<string, unknown>): void;
-  info(message: string, extra?: Record<string, unknown>): void;
-  warn(message: string, extra?: Record<string, unknown>): void;
-  error(message: string, extra?: Record<string, unknown>): void;
-}
-
-let _client: PluginClient | null = null;
-
+/**
+ * Initialize the logger with the plugin client for remote logging
+ */
 export function initLogger(client: PluginClient): void {
-  _client = client;
+  setLogHandler((level, service, message, extra) => {
+    client.app.log({
+      body: { service, level, message, extra },
+    }).catch(() => {});
+  });
 }
 
-export function createLogger(module: string): Logger {
-  const service = `pty.${module}`;
-
-  const log = (level: LogLevel, message: string, extra?: Record<string, unknown>): void => {
-    if (_client) {
-      _client.app.log({
-        body: { service, level, message, extra },
-      }).catch(() => { });
-    } else {
-      const prefix = `[${service}]`;
-      const args = extra ? [prefix, message, extra] : [prefix, message];
-      switch (level) {
-        case "debug":
-          console.debug(...args);
-          break;
-        case "info":
-          console.info(...args);
-          break;
-        case "warn":
-          console.warn(...args);
-          break;
-        case "error":
-          console.error(...args);
-          break;
-      }
-    }
-  };
-
-  return {
-    debug: (message, extra) => log("debug", message, extra),
-    info: (message, extra) => log("info", message, extra),
-    warn: (message, extra) => log("warn", message, extra),
-    error: (message, extra) => log("error", message, extra),
-  };
-}
+/**
+ * Create a logger for a specific module (re-export from core)
+ */
+export const createLogger: (module: string) => Logger = coreCreateLogger;

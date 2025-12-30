@@ -1,12 +1,10 @@
 {
-  "name": "opencode-pty",
+  "name": "pty-skill",
   "module": "index.ts",
-  "version": "0.1.1",
-  "description": "OpenCode plugin for interactive PTY management - run background processes, send input, read output with regex filtering",
+  "version": "0.2.0",
+  "description": "Interactive PTY management skill for AI agents - run background processes, send input, read output with regex filtering. Works with Claude Code, Codex CLI, and other AI tools.",
   "author": "shekohex",
   "keywords": [
-    "opencode",
-    "opencode-plugin",
     "pty",
     "pseudo-terminal",
     "terminal",
@@ -15,7 +13,13 @@
     "cli",
     "shell",
     "dev-server",
-    "bun"
+    "bun",
+    "ai-agent",
+    "claude-code",
+    "codex-cli",
+    "skill",
+    "opencode",
+    "opencode-plugin"
   ],
   "repository": {
     "type": "git",
@@ -25,15 +29,25 @@
     "url": "https://github.com/shekohex/opencode-pty/issues"
   },
   "homepage": "https://github.com/shekohex/opencode-pty#readme",
+  "bin": {
+    "pty-skill": "./cli/bin/pty-skill.ts"
+  },
   "files": [
     "index.ts",
-    "src"
+    "src",
+    "cli",
+    "SKILL.md",
+    "dist"
   ],
   "license": "MIT",
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "build": "bun run build-cli.ts",
+    "build:darwin-arm64": "bun build --compile --target=bun-darwin-arm64 cli/bin/pty-skill.ts --outfile dist/pty-skill-darwin-arm64",
+    "build:darwin-x64": "bun build --compile --target=bun-darwin-x64 cli/bin/pty-skill.ts --outfile dist/pty-skill-darwin-x64",
+    "build:linux-x64": "bun build --compile --target=bun-linux-x64 cli/bin/pty-skill.ts --outfile dist/pty-skill-linux-x64"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "^1.0.146",
