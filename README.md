@@ -183,20 +183,119 @@ Use `pty_kill` with `cleanup=true` to remove completely.
 
 ## Local Development
 
+### Prerequisites
+
+- [Bun](https://bun.sh) runtime (required for bun-pty)
+
+### Setup
+
 ```bash
 git clone https://github.com/shekohex/opencode-pty.git
 cd opencode-pty
 bun install
-bun run tsc --noEmit  # Type check
 ```
 
-To load a local checkout in OpenCode:
+### Running the CLI Locally
+
+```bash
+# Run CLI directly from source
+bun cli/bin/pty-skill.ts --help
+
+# Test the full flow
+bun cli/bin/pty-skill.ts daemon start
+bun cli/bin/pty-skill.ts spawn echo "Hello"
+bun cli/bin/pty-skill.ts list
+bun cli/bin/pty-skill.ts daemon stop
+```
+
+### Installing as a Skill for Claude Code
+
+To use this as a skill in Claude Code during development:
+
+**Option 1: Link globally (recommended for development)**
+
+```bash
+# From the repo directory
+bun link
+
+# Now you can use it anywhere
+pty-skill --help
+```
+
+**Option 2: Add to PATH**
+
+```bash
+# Add an alias to your shell config (.bashrc, .zshrc, etc.)
+alias pty-skill="bun /path/to/opencode-pty/cli/bin/pty-skill.ts"
+```
+
+**Option 3: Install from local path**
+
+```bash
+npm install -g /path/to/opencode-pty
+```
+
+### Setting up the SKILL.md
+
+For Claude Code to recognize this as a skill, copy or symlink the SKILL.md to your skills directory:
+
+```bash
+# Create user skills directory if it doesn't exist
+mkdir -p ~/.claude/skills
+
+# Symlink the skill (updates automatically when you modify SKILL.md)
+ln -s /path/to/opencode-pty/SKILL.md ~/.claude/skills/pty-skill.md
+
+# Or copy it (requires manual updates)
+cp /path/to/opencode-pty/SKILL.md ~/.claude/skills/pty-skill.md
+```
+
+Once installed, you can invoke the skill in Claude Code with `/pty-skill` or let Claude automatically use it when it detects relevant triggers (like "start a dev server").
+
+### Building Binaries
+
+```bash
+# Build for all platforms
+bun run build
+
+# Build for specific platform
+bun run build:darwin-arm64
+bun run build:darwin-x64
+bun run build:linux-x64
+
+# Binaries are output to dist/
+ls -la dist/
+```
+
+### Testing the OpenCode Plugin
+
+To load the plugin from a local checkout in OpenCode:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": ["file:///absolute/path/to/opencode-pty"]
 }
+```
+
+### Project Structure
+
+```
+opencode-pty/
+├── cli/                    # Standalone CLI
+│   ├── bin/pty-skill.ts    # CLI entry point
+│   ├── client.ts           # Daemon client
+│   ├── commands/           # CLI commands
+│   └── daemon/             # Background daemon
+├── src/
+│   ├── core/               # Shared core (used by both CLI and plugin)
+│   │   ├── manager.ts      # PTY session manager
+│   │   ├── buffer.ts       # Ring buffer for output
+│   │   └── types.ts        # Type definitions
+│   └── plugin/             # OpenCode plugin
+│       └── pty/tools/      # Plugin tool definitions
+├── SKILL.md                # AI agent skill documentation
+└── index.ts                # Plugin entry point
 ```
 
 ## License
