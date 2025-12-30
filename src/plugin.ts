@@ -1,6 +1,6 @@
 import { createLogger, initLogger } from "./plugin/logger.ts";
 import type { PluginContext, PluginResult } from "./plugin/types.ts";
-import { manager } from "./plugin/pty/manager.ts";
+import { manager } from "./core/manager.ts";
 import { initPermissions } from "./plugin/pty/permissions.ts";
 import { ptySpawn } from "./plugin/pty/tools/spawn.ts";
 import { ptyWrite } from "./plugin/pty/tools/write.ts";

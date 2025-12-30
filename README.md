@@ -1,17 +1,17 @@
-# opencode-pty
+# pty-skill
 
-A plugin for [OpenCode](https://opencode.ai) that provides interactive PTY (pseudo-terminal) management, enabling the AI agent to run background processes, send interactive input, and read output on demand.
+Interactive PTY (pseudo-terminal) management for AI agents. Works as a **standalone CLI** for Claude Code, Codex CLI, and other AI tools, or as an **OpenCode plugin**.
 
 ## Why?
 
-OpenCode's built-in `bash` tool runs commands synchronously—the agent waits for completion. This works for quick commands, but not for:
+AI agents need to interact with long-running processes, but most tools run commands synchronously. This doesn't work for:
 
 - **Dev servers** (`npm run dev`, `cargo watch`)
 - **Watch modes** (`npm test -- --watch`)
 - **Long-running processes** (database servers, tunnels)
 - **Interactive programs** (REPLs, prompts)
 
-This plugin gives the agent full control over multiple terminal sessions, like tabs in a terminal app.
+This tool gives AI agents full control over multiple terminal sessions, like tabs in a terminal app.
 
 ## Features
 
@@ -24,32 +24,62 @@ This plugin gives the agent full control over multiple terminal sessions, like t
 - **Session Lifecycle**: Sessions persist until explicitly killed
 - **Auto-cleanup**: PTYs are cleaned up when OpenCode sessions end
 
-## Setup
+## Installation
 
-Add the plugin to your [OpenCode config](https://opencode.ai/docs/config/):
+### CLI (for Claude Code, Codex CLI, etc.)
+
+```bash
+# Install globally
+npm install -g pty-skill
+
+# Or run directly with npx
+npx pty-skill --help
+```
+
+The CLI runs a background daemon that maintains PTY sessions across invocations. The daemon auto-starts on first use.
+
+### OpenCode Plugin
+
+Add to your [OpenCode config](https://opencode.ai/docs/config/):
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-pty"]
+  "plugin": ["pty-skill"]
 }
 ```
 
-That's it. OpenCode will automatically install the plugin on next run.
+OpenCode will automatically install the plugin on next run.
 
-## Updating
-
-> [!WARNING]
-> OpenCode does NOT auto-update plugins.
-
-To get the latest version, clear the cached plugin and let OpenCode reinstall it:
+## CLI Usage
 
 ```bash
-rm -rf ~/.cache/opencode/node_modules/opencode-pty
-opencode
+# Start a dev server
+pty-skill spawn -t "Dev Server" npm run dev
+# Returns: pty_abc123
+
+# Check server output
+pty-skill read pty_abc123 --limit 50
+
+# Filter for errors
+pty-skill read pty_abc123 --pattern "error" --ignore-case
+
+# Send Ctrl+C to stop
+pty-skill write pty_abc123 "\x03"
+
+# List all sessions
+pty-skill list
+
+# Kill and cleanup
+pty-skill kill pty_abc123 --cleanup
+
+# Check daemon status
+pty-skill status
 ```
 
-## Tools Provided
+See [SKILL.md](SKILL.md) for complete CLI documentation.
+
+## OpenCode Plugin Tools
 
 | Tool | Description |
 |------|-------------|
@@ -59,39 +89,21 @@ opencode
 | `pty_list` | List all PTY sessions with status, PID, line count |
 | `pty_kill` | Terminate a PTY, optionally cleanup the buffer |
 
-## Usage Examples
-
-### Start a dev server
+### Plugin Usage Examples
 
 ```
 pty_spawn: command="npm", args=["run", "dev"], title="Dev Server"
 → Returns: pty_a1b2c3d4
-```
 
-### Check server output
-
-```
 pty_read: id="pty_a1b2c3d4", limit=50
 → Shows last 50 lines of output
-```
 
-### Filter for errors
-
-```
 pty_read: id="pty_a1b2c3d4", pattern="error|ERROR", ignoreCase=true
 → Shows only lines matching the pattern
-```
 
-### Send Ctrl+C to stop
-
-```
 pty_write: id="pty_a1b2c3d4", data="\x03"
 → Sends interrupt signal
-```
 
-### Kill and cleanup
-
-```
 pty_kill: id="pty_a1b2c3d4", cleanup=true
 → Terminates process and frees buffer
 ```

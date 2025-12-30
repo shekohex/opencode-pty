@@ -1,5 +1,5 @@
 import { tool } from "@opencode-ai/plugin";
-import { manager } from "../manager.ts";
+import { manager } from "../../../core/manager.ts";
 import { checkCommandPermission, checkWorkdirPermission } from "../permissions.ts";
 import DESCRIPTION from "./spawn.txt";
 

@@ -94,24 +94,27 @@ jobs:
             fi
             printf "%s\n" "$CHANGELOG"
             echo ""
-            echo "### Installation"
+            echo "### CLI Installation"
+            echo ""
+            echo "Install globally via npm:"
+            echo ""
+            printf '%s\n' '```bash'
+            printf '%s\n' 'npm install -g pty-skill'
+            printf '%s\n' '# or run directly with npx'
+            printf '%s\n' 'npx pty-skill --help'
+            printf '%s\n' '```'
+            echo ""
+            echo "Or download a pre-built binary from the release assets above."
+            echo ""
+            echo "### OpenCode Plugin"
             echo ""
             echo "Add to your \`opencode.json\`:"
             echo ""
             printf '%s\n' '```json'
             printf '%s\n' '{'
             printf '%s\n' '  "$schema": "https://opencode.ai/config.json",'
-            printf '%s\n' '  "plugin": ["opencode-pty"]'
+            printf '%s\n' '  "plugin": ["pty-skill"]'
             printf '%s\n' '}'
-            printf '%s\n' '```'
-            echo ""
-            echo "### Update Instructions"
-            echo ""
-            echo "To get the latest version:"
-            echo ""
-            printf '%s\n' '```bash'
-            printf '%s\n' 'rm -rf ~/.cache/opencode/node_modules/opencode-pty'
-            printf '%s\n' 'opencode'
             printf '%s\n' '```'
           } >"$BODY_FILE"
           cat "$BODY_FILE"
@@ -121,8 +124,19 @@ jobs:
             echo "EOF"
           } >>"$GITHUB_OUTPUT"
 
+      - name: Setup Bun
+        if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Build CLI binaries
+        if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
+        run: bun run build
+
       - name: Create GitHub release
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
+        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -131,6 +145,39 @@ jobs:
           release_name: v${{ steps.determine.outputs.current_version }}
           body: ${{ steps.release_notes.outputs.body }}
           generate_release_notes: false
+
+      - name: Upload darwin-arm64 binary
+        if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/pty-skill-darwin-arm64
+          asset_name: pty-skill-darwin-arm64
+          asset_content_type: application/octet-stream
+
+      - name: Upload darwin-x64 binary
+        if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/pty-skill-darwin-x64
+          asset_name: pty-skill-darwin-x64
+          asset_content_type: application/octet-stream
+
+      - name: Upload linux-x64 binary
+        if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/pty-skill-linux-x64
+          asset_name: pty-skill-linux-x64
+          asset_content_type: application/octet-stream
 
       - name: Publish to npm
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
