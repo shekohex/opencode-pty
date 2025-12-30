@@ -79,15 +79,19 @@ pty-skill status
 
 See [SKILL.md](SKILL.md) for complete CLI documentation.
 
+### Example: Claude Code using pty-skill
+
+See [examples/claude-code-conversation.md](examples/claude-code-conversation.md) for a real conversation where Claude Code uses pty-skill to test nvim - spawning a session, sending vim commands, and saving a file.
+
 ## OpenCode Plugin Tools
 
-| Tool | Description |
-|------|-------------|
-| `pty_spawn` | Create a new PTY session (command, args, workdir, env, title) |
+| Tool        | Description                                                         |
+| ----------- | ------------------------------------------------------------------- |
+| `pty_spawn` | Create a new PTY session (command, args, workdir, env, title)       |
 | `pty_write` | Send input to a PTY (text, escape sequences like `\x03` for Ctrl+C) |
-| `pty_read` | Read output buffer with pagination and optional regex filtering |
-| `pty_list` | List all PTY sessions with status, PID, line count |
-| `pty_kill` | Terminate a PTY, optionally cleanup the buffer |
+| `pty_read`  | Read output buffer with pagination and optional regex filtering     |
+| `pty_list`  | List all PTY sessions with status, PID, line count                  |
+| `pty_kill`  | Terminate a PTY, optionally cleanup the buffer                      |
 
 ### Plugin Usage Examples
 
@@ -112,8 +116,8 @@ pty_kill: id="pty_a1b2c3d4", cleanup=true
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+| Variable               | Default | Description                                        |
+| ---------------------- | ------- | -------------------------------------------------- |
 | `PTY_MAX_BUFFER_LINES` | `50000` | Maximum lines to keep in output buffer per session |
 
 ### Permissions
@@ -137,7 +141,6 @@ This plugin respects OpenCode's [permission settings](https://opencode.ai/docs/p
 > **Limitations compared to built-in bash tool:**
 >
 > - **"ask" permissions are treated as "deny"**: Since plugins cannot trigger OpenCode's permission prompt UI, commands matching an "ask" pattern will be denied. A toast notification will inform you when this happens. Configure explicit "allow" or "deny" for commands you want to use with PTY.
->
 > - **"external_directory" with "ask" is treated as "allow"**: When the working directory is outside the project and `permission.external_directory` is set to "ask", this plugin allows it (with a log message). Set to "deny" explicitly if you want to block external directories.
 
 #### Example: Allow specific commands for PTY
@@ -175,6 +178,7 @@ spawn → running → [exited | killed]
 ```
 
 Sessions remain in the list after exit so the agent can:
+
 - Read final output
 - Check exit code
 - Compare logs between runs
@@ -190,7 +194,7 @@ Use `pty_kill` with `cleanup=true` to remove completely.
 ### Setup
 
 ```bash
-git clone https://github.com/shekohex/opencode-pty.git
+git clone https://github.com/fcoury/pty-skill.git
 cd opencode-pty
 bun install
 ```
@@ -251,6 +255,7 @@ ln -s /path/to/opencode-pty ~/.claude/skills/pty-skill
 ```
 
 The skill directory structure:
+
 ```
 ~/.claude/skills/
 └── pty-skill/
