@@ -235,22 +235,29 @@ alias pty-skill="bun /path/to/opencode-pty/cli/bin/pty-skill.ts"
 npm install -g /path/to/opencode-pty
 ```
 
-### Setting up the SKILL.md
+### Setting up the Skill for Claude Code
 
-For Claude Code to recognize this as a skill, copy or symlink the SKILL.md to your skills directory:
+Skills require their own subdirectory. To set up for Claude Code:
 
 ```bash
-# Create user skills directory if it doesn't exist
-mkdir -p ~/.claude/skills
+# Create the skill directory
+mkdir -p ~/.claude/skills/pty-skill
 
-# Symlink the skill (updates automatically when you modify SKILL.md)
-ln -s /path/to/opencode-pty/SKILL.md ~/.claude/skills/pty-skill.md
+# Option 1: Symlink just the SKILL.md (for development)
+ln -s /path/to/opencode-pty/SKILL.md ~/.claude/skills/pty-skill/SKILL.md
 
-# Or copy it (requires manual updates)
-cp /path/to/opencode-pty/SKILL.md ~/.claude/skills/pty-skill.md
+# Option 2: Symlink the whole repo (includes all resources)
+ln -s /path/to/opencode-pty ~/.claude/skills/pty-skill
 ```
 
-Once installed, you can invoke the skill in Claude Code with `/pty-skill` or let Claude automatically use it when it detects relevant triggers (like "start a dev server").
+The skill directory structure:
+```
+~/.claude/skills/
+└── pty-skill/
+    └── SKILL.md      # Required - skill documentation
+```
+
+Once installed, Claude Code will automatically use it when it detects relevant triggers (like "start a dev server"), or you can invoke it explicitly.
 
 ### Building Binaries
 

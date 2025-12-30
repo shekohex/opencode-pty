@@ -17,6 +17,20 @@ triggers:
 
 Manage interactive pseudo-terminal sessions for background processes, dev servers, and interactive programs.
 
+## Dependencies
+
+The `pty-skill` CLI must be installed. If not available, install it:
+
+```bash
+# Install globally via npm
+npm install -g pty-skill
+
+# Or run directly with npx (no install needed)
+npx pty-skill --help
+```
+
+The CLI runs a background daemon that maintains PTY sessions across invocations. The daemon auto-starts on first use.
+
 ## When to Use
 
 Use this skill when you need to:
