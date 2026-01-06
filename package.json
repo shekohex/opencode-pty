@@ -36,14 +36,14 @@
     "test": "bun test"
   },
   "devDependencies": {
-    "@opencode-ai/plugin": "^1.0.146",
-    "@opencode-ai/sdk": "^1.0.146",
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
+    "@opencode-ai/plugin": "^1.1.3",
+    "@opencode-ai/sdk": "^1.1.3",
     "bun-pty": "^0.4.2"
   }
 }
