@@ -28,6 +28,7 @@ export const ptySpawn = tool({
       workdir: args.workdir,
       env: args.env,
       title: args.title,
+      description: args.description,
       parentSessionId: sessionId,
       notifyOnExit: args.notifyOnExit,
     });

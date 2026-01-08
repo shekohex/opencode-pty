@@ -43,6 +43,7 @@ class PTYManager {
     const session: PTYSession = {
       id,
       title,
+      description: opts.description,
       command: opts.command,
       args,
       workdir,
@@ -193,17 +194,23 @@ class PTYManager {
     const lineCount = session.buffer.length;
     let lastLine = "";
     if (lineCount > 0) {
-      const bufferLines = session.buffer.read(lineCount - 1, 1);
-      const line = bufferLines[0];
-      if (line !== undefined) {
-        lastLine = line.length > 250 ? line.slice(0, 250) + "..." : line;
+      for (let i = lineCount - 1; i >= 0; i--) {
+        const bufferLines = session.buffer.read(i, 1);
+        const line = bufferLines[0];
+        if (line !== undefined && line.trim() !== "") {
+          lastLine = line.length > 250 ? line.slice(0, 250) + "..." : line;
+          break;
+        }
       }
     }
+
+    const displayTitle = session.description ?? session.title;
+    const truncatedTitle = displayTitle.length > 64 ? displayTitle.slice(0, 64) + "..." : displayTitle;
 
     const lines = [
       "<pty_exited>",
       `ID: ${session.id}`,
-      `Title: ${session.title}`,
+      `Description: ${truncatedTitle}`,
       `Exit Code: ${exitCode}`,
       `Output Lines: ${lineCount}`,
       `Last Line: ${lastLine}`,

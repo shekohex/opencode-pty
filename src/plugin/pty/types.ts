@@ -6,6 +6,7 @@ export type PTYStatus = "running" | "idle" | "exited" | "killed";
 export interface PTYSession {
   id: string;
   title: string;
+  description?: string;
   command: string;
   args: string[];
   workdir: string;
@@ -39,6 +40,7 @@ export interface SpawnOptions {
   workdir?: string;
   env?: Record<string, string>;
   title?: string;
+  description?: string;
   parentSessionId: string;
   notifyOnExit?: boolean;
 }
