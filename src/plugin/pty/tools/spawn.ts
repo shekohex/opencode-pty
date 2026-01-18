@@ -22,7 +22,7 @@ export const ptySpawn = tool({
     }
 
     const sessionId = ctx.sessionID;
-    const info = manager.spawn({
+    const info = await manager.spawn({
       command: args.command,
       args: args.args,
       workdir: args.workdir,
