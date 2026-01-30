@@ -1,7 +1,7 @@
 {
   "name": "opencode-pty",
   "module": "index.ts",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "OpenCode plugin for interactive PTY management - run background processes, send input, read output with regex filtering",
   "author": "shekohex",
   "keywords": [
