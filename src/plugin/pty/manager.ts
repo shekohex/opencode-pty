@@ -1,8 +1,9 @@
-import { spawn, type IPty } from "bun-pty";
+import type { IPty } from "bun-pty";
 import type { OpencodeClient } from "@opencode-ai/sdk";
 import { RingBuffer } from "./buffer.ts";
 import type { PTYSession, PTYSessionInfo, SpawnOptions, ReadResult, SearchResult } from "./types.ts";
 import { createLogger } from "../logger.ts";
+import { prepareShadowPty } from "./shadow.ts";
 
 const log = createLogger("manager");
 
@@ -21,8 +22,17 @@ function generateId(): string {
 
 class PTYManager {
   private sessions: Map<string, PTYSession> = new Map();
+  private ptyModule: typeof import("bun-pty") | null = null;
 
-  spawn(opts: SpawnOptions): PTYSessionInfo {
+  private async ensureLoaded() {
+    if (this.ptyModule) return this.ptyModule;
+    await prepareShadowPty();
+    this.ptyModule = await import("bun-pty");
+    return this.ptyModule;
+  }
+
+  async spawn(opts: SpawnOptions): Promise<PTYSessionInfo> {
+    const { spawn } = await this.ensureLoaded();
     const id = generateId();
     const args = opts.args ?? [];
     const workdir = opts.workdir ?? process.cwd();
