@@ -83,7 +83,7 @@ If you name it "task" or "process" or anything else, the agent will sometimes ru
 ### Starting the Web UI
 
 1. Run opencode with the plugin.
-2. Run slash command `/pty-server-url`.
+2. Run slash command `/pty-open-background-spy`.
 
 Opencode will load the plugin.
 The plugin will start the server and provide the slash command.
