@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+bun.lock
+
+# Build outputs
+dist/
+*.tgz
+
+# Test reports
+playwright-report/
+test-results/
+coverage/
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+
+# Lock files (Bun handles this)
+bun.lock

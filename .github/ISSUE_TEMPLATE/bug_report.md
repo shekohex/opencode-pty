@@ -1,9 +1,9 @@
 ---
 name: Bug Report
 about: Report a bug with the opencode-pty plugin
-title: "[Bug]: "
-labels: ["bug"]
-assignees: ""
+title: '[Bug]: '
+labels: ['bug']
+assignees: ''
 ---
 
 ## Description

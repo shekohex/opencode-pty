@@ -1,9 +1,11 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ['CI']
+    types:
+      - completed
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -12,26 +14,27 @@ permissions:
 
 jobs:
   publish:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
+          bun-version: latest
 
       - name: Determine release state
         id: determine
         run: |
           set -euo pipefail
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          CURRENT_VERSION=$(bun -e 'import pkg from "./package.json"; console.log(pkg.version)')
           echo "current_version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
           if git rev-parse HEAD^ >/dev/null 2>&1; then
-            PREVIOUS_VERSION=$(node -e "const { execSync } = require('node:child_process'); try { const data = execSync('git show HEAD^:package.json', { stdio: ['ignore', 'pipe', 'ignore'] }); const json = JSON.parse(data.toString()); if (json && typeof json.version === 'string') { process.stdout.write(json.version); } } catch (error) {}")
+            PREVIOUS_VERSION=$(bun -e "const { execSync } = require('node:child_process'); try { const data = execSync('git show HEAD^:package.json', { stdio: ['ignore', 'pipe', 'ignore'] }); const json = JSON.parse(data.toString()); if (json && typeof json.version === 'string') { process.stdout.write(json.version); } } catch (error) {}")
             PREVIOUS_VERSION=${PREVIOUS_VERSION//$'\n'/}
           else
             PREVIOUS_VERSION=""
@@ -51,13 +54,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
-        run: |
-          npm install -g npm@latest
-          npm install
-
-      - name: Type check
-        if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
-        run: npx tsc --noEmit
+        run: bun install
 
       - name: Generate release notes
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
@@ -123,15 +120,13 @@ jobs:
 
       - name: Create GitHub release
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
-        uses: actions/create-release@v1
+        run: |
+          gh release create "v${{ steps.determine.outputs.current_version }}" \
+            --title "v${{ steps.determine.outputs.current_version }}" \
+            --notes "${{ steps.release_notes.outputs.body }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.determine.outputs.current_version }}
-          release_name: v${{ steps.determine.outputs.current_version }}
-          body: ${{ steps.release_notes.outputs.body }}
-          generate_release_notes: false
 
       - name: Publish to npm
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
-        run: npm publish --access public --provenance
+        run: bunx npm publish --access public --provenance

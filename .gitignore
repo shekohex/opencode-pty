@@ -10,6 +10,10 @@ dist
 coverage
 *.lcov
 
+# test results and reports
+playwright-report/
+test-results/
+
 # logs
 logs
 _.log
