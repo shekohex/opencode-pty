@@ -85,16 +85,7 @@ If you name it "task" or "process" or anything else, the agent will sometimes ru
 1. Run opencode with the plugin.
 2. Run slash command `/pty-open-background-spy`.
 
-Opencode will load the plugin.
-The plugin will start the server and provide the slash command.
-The port is not fixed.
-Every process instance of opencode will start a new server with unique random (but still free) port on localhost.
-The origin of the printed URL provided by the slash command will route to the static `index.html` (client).
-The `index.html` loads the javascript files, that build the client in the browser.
-The client will use a websocket and http (REST API) requests to communicate with the server, depending on latency, reliability and reactivity.
-The server subscribes to the events of the base (session creation, new output of pty session).
-The client subscribes to the events of the server (bun pub/sub via websocket).
-Everything is event driven, reliable (if you can call websocket communication reliable) and reactive (using react as client builder).
+This will start the background sessions observer cockpit server and launch the browser with web UI.
 
 ### Features
 
