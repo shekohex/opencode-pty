@@ -18,6 +18,7 @@ export interface PTYSession {
   pid: number
   createdAt: moment.Moment
   parentSessionId: string
+  parentAgent?: string
   notifyOnExit: boolean
   buffer: RingBuffer
   process: IPty | null
@@ -46,6 +47,7 @@ export interface SpawnOptions {
   title?: string
   description?: string
   parentSessionId: string
+  parentAgent?: string
   notifyOnExit?: boolean
 }
 

@@ -49,6 +49,7 @@ describe('PTY Tools', () => {
         args: ['hello'],
         description: 'Test session',
         parentSessionId: 'parent-session-id',
+        parentAgent: 'test-agent',
         workdir: undefined,
         env: undefined,
         title: undefined,
@@ -92,6 +93,7 @@ describe('PTY Tools', () => {
         title: 'My Node Session',
         description: 'Running Node.js script',
         parentSessionId: 'parent-session-id',
+        parentAgent: 'test-agent',
         notifyOnExit: true,
       })
 

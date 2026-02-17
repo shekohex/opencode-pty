@@ -20,6 +20,7 @@ export class NotificationManager {
         path: { id: session.parentSessionId },
         body: {
           parts: [{ type: 'text', text: message }],
+          ...(session.parentAgent ? { agent: session.parentAgent } : {}),
         },
       })
     } catch {

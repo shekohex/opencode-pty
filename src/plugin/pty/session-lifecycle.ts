@@ -36,6 +36,7 @@ export class SessionLifecycleManager {
       pid: 0, // will be set after spawn
       createdAt: moment(),
       parentSessionId: opts.parentSessionId,
+      parentAgent: opts.parentAgent,
       notifyOnExit: opts.notifyOnExit ?? false,
       buffer,
       process: null, // will be set

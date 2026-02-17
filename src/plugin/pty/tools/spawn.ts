@@ -40,6 +40,7 @@ export const ptySpawn = tool({
       title: args.title,
       description: args.description,
       parentSessionId: sessionId,
+      parentAgent: ctx.agent,
       notifyOnExit: args.notifyOnExit,
     })
 
