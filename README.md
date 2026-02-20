@@ -42,10 +42,9 @@ That's it. OpenCode will automatically install the plugin on next run.
 
 ## Updating
 
-> [!WARNING]
-> OpenCode does NOT auto-update plugins.
+OpenCode automatically checks for and installs plugin updates on startup. You don't need to do anything manually!
 
-To get the latest version, clear the cached plugin and let OpenCode reinstall it:
+If you ever need to force a clean reinstall, you can clear the cache:
 
 ```bash
 rm -rf ~/.cache/opencode/node_modules/opencode-pty
