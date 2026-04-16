@@ -9,27 +9,40 @@ export function getSessions() {
 }
 
 export async function createSession(req: Request) {
+  let body: {
+    command: string
+    args?: string[]
+    description?: string
+    workdir?: string
+    timeoutSeconds?: number
+  }
+
   try {
-    const body = (await req.json()) as {
-      command: string
-      args?: string[]
-      description?: string
-      workdir?: string
-    }
-    if (!body.command || typeof body.command !== 'string' || body.command.trim() === '') {
-      return new ErrorResponse('Command is required', 400)
-    }
+    body = (await req.json()) as typeof body
+  } catch {
+    return new ErrorResponse('Invalid JSON in request body', 400)
+  }
+
+  if (!body.command || typeof body.command !== 'string' || body.command.trim() === '') {
+    return new ErrorResponse('Command is required', 400)
+  }
+
+  try {
     const session = manager.spawn({
       command: body.command,
       args: body.args || [],
       title: body.description,
       description: body.description,
       workdir: body.workdir,
+      timeoutSeconds: body.timeoutSeconds,
       parentSessionId: 'web-api',
     })
     return new JsonResponse(session)
-  } catch {
-    return new ErrorResponse('Invalid JSON in request body', 400)
+  } catch (error) {
+    return new ErrorResponse(
+      error instanceof Error ? error.message : 'Failed to create session',
+      400
+    )
   }
 }
 

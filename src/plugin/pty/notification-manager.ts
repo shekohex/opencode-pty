@@ -56,13 +56,19 @@ export class NotificationManager {
       `ID: ${session.id}`,
       `Description: ${truncatedTitle}`,
       `Exit Code: ${exitCode}`,
+      `TimeoutSeconds: ${session.timeoutSeconds ?? 'none'}`,
+      `Timed Out: ${session.timedOut ? 'yes' : 'no'}`,
       `Output Lines: ${lineCount}`,
       `Last Line: ${lastLine}`,
       '</pty_exited>',
       '',
     ]
 
-    if (exitCode === 0) {
+    if (session.timedOut) {
+      lines.push(
+        'Process reached its PTY timeout and was stopped automatically. Use pty_read to inspect the final output.'
+      )
+    } else if (exitCode === 0) {
       lines.push('Use pty_read to check the full output.')
     } else {
       lines.push(

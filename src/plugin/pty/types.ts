@@ -19,6 +19,8 @@ export interface PTYSession {
   parentSessionId: string
   parentAgent?: string
   notifyOnExit: boolean
+  timeoutSeconds?: number
+  timedOut: boolean
   buffer: RingBuffer
   process: IPty | null
 }
@@ -32,6 +34,8 @@ export interface PTYSessionInfo {
   workdir: string
   status: PTYStatus
   notifyOnExit: boolean
+  timeoutSeconds?: number
+  timedOut: boolean
   exitCode?: number
   exitSignal?: number | string
   pid: number
@@ -49,6 +53,7 @@ export interface SpawnOptions {
   parentSessionId: string
   parentAgent?: string
   notifyOnExit?: boolean
+  timeoutSeconds?: number
 }
 
 export interface ReadResult {

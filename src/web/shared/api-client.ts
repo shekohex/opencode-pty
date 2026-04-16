@@ -86,6 +86,7 @@ export function createApiClient(baseUrl: string) {
         args?: string[]
         description?: string
         workdir?: string
+        timeoutSeconds?: number
       }) =>
         apiFetchJson<typeof routes.sessions, 'POST', PTYSessionInfo>(routes.sessions, {
           method: 'POST',

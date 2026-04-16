@@ -32,6 +32,12 @@ export const ptySpawn = tool({
       .describe(
         'If true, sends a notification to the session when the process exits (default: false)'
       ),
+    timeoutSeconds: tool.schema
+      .number()
+      .optional()
+      .describe(
+        'Optional per-session timeout in seconds. The PTY is killed automatically when this duration elapses.'
+      ),
   },
   async execute(args, ctx) {
     await checkCommandPermission(args.command, args.args ?? [])
@@ -51,6 +57,7 @@ export const ptySpawn = tool({
       parentSessionId: sessionId,
       parentAgent: ctx.agent,
       notifyOnExit: args.notifyOnExit,
+      timeoutSeconds: args.timeoutSeconds,
     })
 
     const output = [
@@ -62,6 +69,7 @@ export const ptySpawn = tool({
       `PID: ${info.pid}`,
       `Status: ${info.status}`,
       `NotifyOnExit: ${info.notifyOnExit}`,
+      `TimeoutSeconds: ${info.timeoutSeconds ?? 'none'}`,
       `</pty_spawned>`,
       ...(info.notifyOnExit ? ['', NOTIFY_ON_EXIT_INSTRUCTIONS] : []),
     ].join('\n')

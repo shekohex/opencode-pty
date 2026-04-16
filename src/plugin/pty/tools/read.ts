@@ -16,6 +16,15 @@ const NOTIFY_ON_EXIT_REMINDER = [
   `</system_reminder>`,
 ].join('\n')
 
+function buildTimeoutReminder(session: PTYSessionInfo): string {
+  return [
+    `<system_reminder>`,
+    `This session was auto-killed after reaching \`timeoutSeconds=${session.timeoutSeconds ?? 'unknown'}\`.`,
+    `Use \`pty_read\` to inspect the final output or \`pty_list\` to review other sessions.`,
+    `</system_reminder>`,
+  ].join('\n')
+}
+
 interface ReadArgs {
   id: string
   offset?: number
@@ -52,6 +61,18 @@ function appendNotifyOnExitReminder(output: string, session: PTYSessionInfo): st
   }
 
   return `${output}\n\n${NOTIFY_ON_EXIT_REMINDER}`
+}
+
+function appendTimeoutReminder(output: string, session: PTYSessionInfo): string {
+  if (!session.timedOut) {
+    return output
+  }
+
+  return `${output}\n\n${buildTimeoutReminder(session)}`
+}
+
+function appendSessionReminders(output: string, session: PTYSessionInfo): string {
+  return appendTimeoutReminder(appendNotifyOnExitReminder(output, session), session)
 }
 
 /**
@@ -91,7 +112,7 @@ function handlePatternRead(
   }
 
   if (result.matches.length === 0) {
-    return appendNotifyOnExitReminder(
+    return appendSessionReminders(
       [
         `<pty_output id="${id}" status="${session.status}" pattern="${pattern}">`,
         `No lines matched the pattern '${pattern}'.`,
@@ -109,7 +130,7 @@ function handlePatternRead(
   const paginationMessage = `(${result.matches.length} of ${result.totalMatches} matches shown. Use offset=${offset + result.matches.length} to see more.)`
   const endMessage = `(${result.totalMatches} match${result.totalMatches === 1 ? '' : 'es'} from ${result.totalLines} total lines)`
 
-  return appendNotifyOnExitReminder(
+  return appendSessionReminders(
     formatPtyOutput(
       id,
       session.status,
@@ -138,7 +159,7 @@ function handlePlainRead(
   }
 
   if (result.lines.length === 0) {
-    return appendNotifyOnExitReminder(
+    return appendSessionReminders(
       [
         `<pty_output id="${args.id}" status="${session.status}">`,
         `(No output available - buffer is empty)`,
@@ -156,7 +177,7 @@ function handlePlainRead(
   const paginationMessage = `(Buffer has more lines. Use offset=${result.offset + result.lines.length} to read beyond line ${result.offset + result.lines.length})`
   const endMessage = `(End of buffer - total ${result.totalLines} lines)`
 
-  return appendNotifyOnExitReminder(
+  return appendSessionReminders(
     formatPtyOutput(
       args.id,
       session.status,

@@ -14,11 +14,64 @@ function generateId(): string {
 
 export class SessionLifecycleManager {
   private sessions: Map<string, PTYSession> = new Map()
+  private sessionTimeouts: Map<string, ReturnType<typeof setTimeout>> = new Map()
+
+  private normalizeTimeoutSeconds(timeoutSeconds: number | undefined): number | undefined {
+    if (timeoutSeconds === undefined) {
+      return undefined
+    }
+
+    if (!Number.isInteger(timeoutSeconds) || timeoutSeconds <= 0) {
+      throw new Error('timeoutSeconds must be a positive integer in seconds')
+    }
+
+    return timeoutSeconds
+  }
+
+  private clearSessionTimeout(id: string): void {
+    const timeoutHandle = this.sessionTimeouts.get(id)
+    if (!timeoutHandle) {
+      return
+    }
+
+    clearTimeout(timeoutHandle)
+    this.sessionTimeouts.delete(id)
+  }
+
+  private scheduleSessionTimeout(session: PTYSession): void {
+    if (session.timeoutSeconds === undefined) {
+      return
+    }
+
+    const timeoutMs = session.timeoutSeconds * 1000
+
+    const timeoutHandle = setTimeout(() => {
+      this.sessionTimeouts.delete(session.id)
+
+      const currentSession = this.sessions.get(session.id)
+      if (!currentSession || currentSession.status !== 'running') {
+        return
+      }
+
+      // Persist the timeout reason before reusing the regular kill flow.
+      currentSession.timedOut = true
+      currentSession.status = 'killing'
+
+      try {
+        currentSession.process?.kill()
+      } catch {
+        // Ignore kill errors
+      }
+    }, timeoutMs)
+
+    this.sessionTimeouts.set(session.id, timeoutHandle)
+  }
 
   private createSessionObject(opts: SpawnOptions): PTYSession {
     const id = generateId()
     const args = opts.args ?? []
     const workdir = opts.workdir ?? process.cwd()
+    const timeoutSeconds = this.normalizeTimeoutSeconds(opts.timeoutSeconds)
     const title =
       opts.title ?? (`${opts.command} ${args.join(' ')}`.trim() || `Terminal ${id.slice(-4)}`)
 
@@ -37,6 +90,8 @@ export class SessionLifecycleManager {
       parentSessionId: opts.parentSessionId,
       parentAgent: opts.parentAgent,
       notifyOnExit: opts.notifyOnExit ?? false,
+      timeoutSeconds,
+      timedOut: false,
       buffer,
       process: null, // will be set
     }
@@ -66,6 +121,8 @@ export class SessionLifecycleManager {
     })
 
     session.process?.onExit(({ exitCode, signal }) => {
+      this.clearSessionTimeout(session.id)
+
       // Flush any remaining incomplete line in the buffer
       session.buffer.flush()
 
@@ -89,6 +146,7 @@ export class SessionLifecycleManager {
     this.spawnProcess(session)
     this.setupEventHandlers(session, onData, onExit)
     this.sessions.set(session.id, session)
+    this.scheduleSessionTimeout(session)
     return this.toInfo(session)
   }
 
@@ -97,6 +155,8 @@ export class SessionLifecycleManager {
     if (!session) {
       return false
     }
+
+    this.clearSessionTimeout(id)
 
     if (session.status === 'running') {
       session.status = 'killing'
@@ -151,6 +211,8 @@ export class SessionLifecycleManager {
       workdir: session.workdir,
       status: session.status,
       notifyOnExit: session.notifyOnExit,
+      timeoutSeconds: session.timeoutSeconds,
+      timedOut: session.timedOut,
       exitCode: session.exitCode,
       exitSignal: session.exitSignal,
       pid: session.pid,
