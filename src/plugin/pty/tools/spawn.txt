@@ -14,6 +14,9 @@ Usage:
 - Use `title` to give the session a human-readable name
 - The `description` parameter is required: a clear, concise 5-10 word description
 - Use `notifyOnExit` to receive a notification when the process exits (default: false)
+- Use `timeoutSeconds` to auto-kill the PTY after a fixed number of seconds
+- Do not set `timeoutSeconds` by default for sessions that are meant to keep running, such as dev servers, watch modes, local APIs, or REPLs. Only add a timeout for those when the user explicitly asks for one.
+- Prefer setting `timeoutSeconds` for long-running commands that are still expected to finish on their own, such as builds, unit test suites, end-to-end tests, migrations, or other commands where you are waiting for a result.
 
 Returns the session info including:
 - `id`: Unique identifier (pty_XXXXXXXX) for use with other pty_* tools
@@ -42,6 +45,8 @@ instead of polling with `pty_read`.
 
 Examples:
 - Start a dev server: command="npm", args=["run", "dev"], title="Dev Server"
+- Start a timed dev server when explicitly requested: command="npm", args=["run", "dev"], title="Dev Server", timeoutSeconds=600
 - Start a Python REPL: command="python3", title="Python REPL"
 - Run tests in watch mode: command="npm", args=["test", "--", "--watch"]
-- Run build with notification: command="npm", args=["run", "build"], notifyOnExit=true
+- Run build with notification and timeout: command="npm", args=["run", "build"], title="Build", notifyOnExit=true, timeoutSeconds=900
+- Run end-to-end tests with timeout: command="npm", args=["run", "test:e2e"], title="E2E Tests", notifyOnExit=true, timeoutSeconds=1800

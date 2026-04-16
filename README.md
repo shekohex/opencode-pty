@@ -55,7 +55,7 @@ opencode
 
 | Tool        | Description                                                                 |
 | ----------- | --------------------------------------------------------------------------- |
-| `pty_spawn` | Create a new PTY session (command, args, workdir, env, title, notifyOnExit) |
+| `pty_spawn` | Create a new PTY session (command, args, workdir, env, title, notifyOnExit, timeoutSeconds) |
 | `pty_write` | Send input to a PTY (text, escape sequences like `\x03` for Ctrl+C)         |
 | `pty_read`  | Read output buffer with pagination and optional regex filtering             |
 | `pty_list`  | List all PTY sessions with status, PID, line count                          |
@@ -120,7 +120,8 @@ curl -X POST http://localhost:[PORT]/api/sessions \
   -d '{
     "command": "bash",
     "args": ["-c", "echo hello && sleep 10"],
-    "description": "Test session"
+    "description": "Test session",
+    "timeoutSeconds": 5
   }'
 ```
 
@@ -163,6 +164,13 @@ This will ease the development on the client.
 
 ```
 pty_spawn: command="npm", args=["run", "dev"], title="Dev Server"
+→ Returns: pty_a1b2c3d4
+```
+
+### Start a timed session
+
+```
+pty_spawn: command="npm", args=["run", "dev"], title="Dev Server", timeoutSeconds=600
 → Returns: pty_a1b2c3d4
 ```
 
