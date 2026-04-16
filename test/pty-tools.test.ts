@@ -20,6 +20,8 @@ describe('PTY Tools', () => {
         pid: 12345,
         status: 'running',
         notifyOnExit: opts.notifyOnExit ?? false,
+        timeoutSeconds: opts.timeoutSeconds,
+        timedOut: false,
         createdAt: new Date().toISOString(),
         lineCount: 0,
       }))
@@ -54,12 +56,14 @@ describe('PTY Tools', () => {
         env: undefined,
         title: undefined,
         notifyOnExit: undefined,
+        timeoutSeconds: undefined,
       })
 
       expect(result).toContain('<pty_spawned>')
       expect(result).toContain('ID: test-session-id')
       expect(result).toContain('Command: echo hello')
       expect(result).toContain('NotifyOnExit: false')
+      expect(result).toContain('TimeoutSeconds: none')
       expect(result).toContain('</pty_spawned>')
       expect(result).not.toContain('<system_reminder>')
     })
@@ -83,6 +87,7 @@ describe('PTY Tools', () => {
         title: 'My Node Session',
         description: 'Running Node.js script',
         notifyOnExit: true,
+        timeoutSeconds: 60,
       }
 
       const result = await ptySpawn.execute(args, ctx)
@@ -97,6 +102,7 @@ describe('PTY Tools', () => {
         parentSessionId: 'parent-session-id',
         parentAgent: 'test-agent',
         notifyOnExit: true,
+        timeoutSeconds: 60,
       })
 
       expect(result).toContain('Title: My Node Session')
@@ -105,6 +111,7 @@ describe('PTY Tools', () => {
       expect(result).toContain('PID: 12345')
       expect(result).toContain('Status: running')
       expect(result).toContain('NotifyOnExit: true')
+      expect(result).toContain('TimeoutSeconds: 60')
       expect(result).toContain('<system_reminder>')
       expect(result).toContain(
         'Completion signal for this session is the future `<pty_exited>` message.'
@@ -130,6 +137,8 @@ describe('PTY Tools', () => {
         workdir: '/tmp',
         status: 'running',
         notifyOnExit: false,
+        timeoutSeconds: undefined,
+        timedOut: false,
         pid: 12345,
         createdAt: new Date().toISOString(),
         lineCount: 2,
@@ -183,6 +192,8 @@ describe('PTY Tools', () => {
         workdir: '/tmp',
         status: 'running',
         notifyOnExit: true,
+        timeoutSeconds: undefined,
+        timedOut: false,
         pid: 12345,
         createdAt: new Date().toISOString(),
         lineCount: 2,
@@ -281,6 +292,8 @@ describe('PTY Tools', () => {
           args: ['hello'],
           status: 'running' as const,
           notifyOnExit: false,
+          timeoutSeconds: undefined,
+          timedOut: false,
           pid: 12345,
           lineCount: 10,
           workdir: '/tmp',

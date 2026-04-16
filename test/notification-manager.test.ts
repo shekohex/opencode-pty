@@ -29,6 +29,8 @@ function createSession(overrides: Partial<PTYSession> = {}): PTYSession {
     parentSessionId: 'parent-session-id',
     parentAgent: 'agent-two',
     notifyOnExit: true,
+    timeoutSeconds: undefined,
+    timedOut: false,
     buffer,
     process: null,
     ...overrides,
@@ -72,5 +74,22 @@ describe('NotificationManager', () => {
     expect(payload.body.parts[0]?.text).toContain(
       'Process failed. Use pty_read with the pattern parameter to search for errors in the output.'
     )
+  })
+
+  it('includes timeout context when the session timed out', async () => {
+    const promptAsync = mock(async (_payload: PromptPayload) => {})
+    const manager = new NotificationManager()
+
+    manager.init({ session: { promptAsync } } as unknown as OpencodeClient)
+
+    await manager.sendExitNotification(createSession({ timeoutSeconds: 2, timedOut: true }), 0)
+
+    expect(promptAsync).toHaveBeenCalledTimes(1)
+    const payload = promptAsync.mock.calls[0]![0]
+    const text = payload.body.parts[0]?.text ?? ''
+
+    expect(text).toContain('TimeoutSeconds: 2')
+    expect(text).toContain('Timed Out: yes')
+    expect(text).toContain('Process reached its PTY timeout and was stopped automatically.')
   })
 })

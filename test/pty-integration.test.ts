@@ -253,5 +253,49 @@ describe('PTY Manager Integration', () => {
       const sessionData = await statusResponse.json()
       expect(sessionData.status).toBe('killed')
     })
+
+    it('should auto-kill timed sessions and mark them as timed out', async () => {
+      await using managedTestClient = await ManagedTestClient.create(
+        managedTestServer.server.getWsUrl()
+      )
+      const title = crypto.randomUUID()
+      const timedOutSessionPromise = new Promise<WSMessageServerSessionUpdate>((resolve) => {
+        managedTestClient.sessionUpdateCallbacks.push((message) => {
+          if (
+            message.session.title === title &&
+            message.session.status === 'killed' &&
+            message.session.timedOut
+          ) {
+            resolve(message)
+          }
+        })
+      })
+
+      managedTestClient.send({
+        type: 'spawn',
+        title,
+        command: 'sleep',
+        args: ['10'],
+        description: 'Timed session',
+        parentSessionId: managedTestServer.sessionId,
+        subscribe: true,
+        timeoutSeconds: 1,
+      })
+
+      const timedOutSession = await timedOutSessionPromise
+
+      expect(timedOutSession.session.timeoutSeconds).toBe(1)
+      expect(timedOutSession.session.timedOut).toBe(true)
+      expect(timedOutSession.session.status).toBe('killed')
+
+      const response = await fetch(
+        `${managedTestServer.server.server.url}/api/sessions/${timedOutSession.session.id}`
+      )
+      const sessionData = (await response.json()) as PTYSessionInfo
+
+      expect(sessionData.status).toBe('killed')
+      expect(sessionData.timeoutSeconds).toBe(1)
+      expect(sessionData.timedOut).toBe(true)
+    })
   })
 })

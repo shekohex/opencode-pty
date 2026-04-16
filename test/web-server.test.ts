@@ -145,6 +145,22 @@ describe('Web Server', () => {
       expect(response.status).toBe(404)
     }, 200)
 
+    it('should reject invalid timeout values during session creation', async () => {
+      const response = await fetch(`${managedTestServer.server.server.url}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          command: 'sleep',
+          args: ['1'],
+          description: 'Invalid timeout session',
+          timeoutSeconds: 0,
+        }),
+      })
+
+      expect(response.status).toBe(400)
+      expect(await response.text()).toContain('timeoutSeconds must be a positive integer')
+    })
+
     it('should handle input to session', async () => {
       const title = crypto.randomUUID()
       const sessionUpdatePromise = new Promise<PTYSessionInfo>((resolve) => {
