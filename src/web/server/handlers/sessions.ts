@@ -1,4 +1,5 @@
 import { manager } from '../../../plugin/pty/manager.ts'
+import { checkCommandPermission, checkWorkdirPermission } from '../../../plugin/pty/permissions.ts'
 import type { BunRequest } from 'bun'
 import { JsonResponse, ErrorResponse } from './responses.ts'
 import type { routes } from '../../shared/routes.ts'
@@ -28,9 +29,15 @@ export async function createSession(req: Request) {
   }
 
   try {
+    const args = body.args || []
+    await checkCommandPermission(body.command, args)
+    if (body.workdir) {
+      await checkWorkdirPermission(body.workdir)
+    }
+
     const session = manager.spawn({
       command: body.command,
-      args: body.args || [],
+      args,
       title: body.description,
       description: body.description,
       workdir: body.workdir,

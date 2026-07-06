@@ -1,5 +1,6 @@
 import type { ServerWebSocket } from 'bun'
 import { manager } from '../../../plugin/pty/manager'
+import { checkCommandPermission, checkWorkdirPermission } from '../../../plugin/pty/permissions'
 import {
   type WSMessageServerSessionList,
   type WSMessageClientSubscribeSession,
@@ -101,7 +102,7 @@ class WebSocketHandler {
           break
 
         case 'spawn':
-          this.handleSpawn(ws, message as WSMessageClientSpawnSession)
+          void this.handleSpawn(ws, message as WSMessageClientSpawnSession)
           break
 
         case 'input':
@@ -124,10 +125,23 @@ class WebSocketHandler {
     }
   }
 
-  private handleSpawn(ws: ServerWebSocket<undefined>, message: WSMessageClientSpawnSession) {
-    const sessionInfo = manager.spawn(message)
-    if (message.subscribe) {
-      this.handleSubscribe(ws, { type: 'subscribe', sessionId: sessionInfo.id })
+  private async handleSpawn(ws: ServerWebSocket<undefined>, message: WSMessageClientSpawnSession) {
+    try {
+      await checkCommandPermission(message.command, message.args ?? [])
+      if (message.workdir) {
+        await checkWorkdirPermission(message.workdir)
+      }
+
+      const sessionInfo = manager.spawn(message)
+      if (message.subscribe) {
+        this.handleSubscribe(ws, { type: 'subscribe', sessionId: sessionInfo.id })
+      }
+    } catch (err) {
+      const error: WSMessageServerError = {
+        type: 'error',
+        error: new CustomError(err instanceof Error ? err.message : Bun.inspect(err)),
+      }
+      ws.send(JSON.stringify(error))
     }
   }
 
