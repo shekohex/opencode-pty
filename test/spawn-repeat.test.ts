@@ -8,6 +8,14 @@ import {
 } from '../src/plugin/pty/manager.ts'
 import type { Subprocess } from 'bun'
 
+function positiveIntFromEnv(name: string, fallback: number): number {
+  const value = process.env[name]
+  if (value === undefined) return fallback
+
+  const parsed = Number.parseInt(value, 10)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}
+
 describe('PTY Echo Behavior', () => {
   beforeEach(() => {
     initManager(new OpencodeClient())
@@ -72,41 +80,56 @@ describe('PTY Echo Behavior', () => {
   }
 
   it('should receive initial data reproducibly', async () => {
-    const start = Date.now()
-    const maxRuntime = 1000
-    let runnings = 1
-    const spawned: TestSpawner[] = []
-    while (Date.now() - start < maxRuntime) {
-      runnings++
-      const testSpawner = new TestSpawner(runnings)
-      spawned.push(testSpawner)
-    }
-    let errorMessage = ''
-    errorMessage += `[TEST] Spawned ${runnings} subprocesses in ${Date.now() - start}ms.\n`
-    const timeout = new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), 20000)
-    })
-    const all = Promise.all(spawned.map((s) => s.subprocess.exited))
-    await Promise.race([all, timeout])
-    const stillRunning = spawned.filter((s) => s.subprocess.exitCode === null)
-    if (stillRunning.length > 0) {
-      errorMessage += `[TEST] Timeout reached after 20s with ${stillRunning.length} subprocesses still running.\n`
-      stillRunning.forEach((s) => {
-        errorMessage += `[TEST] Subprocess ${s.testNumber} stderr: ${s.stderrOutput}\n`
-        errorMessage += `[TEST] Subprocess ${s.testNumber} stdout: ${s.stdoutOutput}\n`
-      })
-    }
-    const exitCodeNonZero = spawned.filter(
-      (s) => s.subprocess.exitCode !== null && s.subprocess.exitCode !== 0
+    const repeatRuns = positiveIntFromEnv('SPAWN_REPEAT_RUNS', 64)
+    const repeatConcurrency = Math.min(
+      positiveIntFromEnv('SPAWN_REPEAT_CONCURRENCY', 8),
+      repeatRuns
     )
-    if (exitCodeNonZero.length > 0) {
-      errorMessage += `[TEST] ${exitCodeNonZero.length} subprocesses exited with non-zero exit code.\n`
-      exitCodeNonZero.forEach((s) => {
-        errorMessage += `[TEST] Subprocess ${s.testNumber} stderr: ${s.stderrOutput}\n`
-        errorMessage += `[TEST] Subprocess ${s.testNumber} stdout: ${s.stdoutOutput}\n`
+    let errorMessage = ''
+    let completedRuns = 0
+    let failureCount = 0
+
+    while (completedRuns < repeatRuns) {
+      const batchSize = Math.min(repeatConcurrency, repeatRuns - completedRuns)
+      const spawned = Array.from(
+        { length: batchSize },
+        (_, index) => new TestSpawner(completedRuns + index + 1)
+      )
+
+      const timeout = new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), 20000)
       })
+      const all = Promise.all(spawned.map((s) => s.subprocess.exited))
+      await Promise.race([all, timeout])
+
+      const stillRunning = spawned.filter((s) => s.subprocess.exitCode === null)
+      if (stillRunning.length > 0) {
+        failureCount += stillRunning.length
+        errorMessage += `[TEST] Timeout reached after 20s with ${stillRunning.length} subprocesses still running.\n`
+        stillRunning.forEach((s) => {
+          errorMessage += `[TEST] Subprocess ${s.testNumber} stderr: ${s.stderrOutput}\n`
+          errorMessage += `[TEST] Subprocess ${s.testNumber} stdout: ${s.stdoutOutput}\n`
+          s.subprocess.kill()
+        })
+      }
+
+      const exitCodeNonZero = spawned.filter(
+        (s) => s.subprocess.exitCode !== null && s.subprocess.exitCode !== 0
+      )
+      if (exitCodeNonZero.length > 0) {
+        failureCount += exitCodeNonZero.length
+        errorMessage += `[TEST] ${exitCodeNonZero.length} subprocesses exited with non-zero exit code.\n`
+        exitCodeNonZero.forEach((s) => {
+          errorMessage += `[TEST] Subprocess ${s.testNumber} stderr: ${s.stderrOutput}\n`
+          errorMessage += `[TEST] Subprocess ${s.testNumber} stdout: ${s.stdoutOutput}\n`
+        })
+      }
+
+      completedRuns += batchSize
     }
-    expect(stillRunning.length + exitCodeNonZero.length, errorMessage).toBe(0)
+
+    errorMessage = `[TEST] Spawned ${completedRuns} subprocesses with concurrency ${repeatConcurrency}.\n${errorMessage}`
+    expect(failureCount, errorMessage).toBe(0)
   }, 60000)
 
   it.skipIf(!process.env.SYNC_TESTS)(
