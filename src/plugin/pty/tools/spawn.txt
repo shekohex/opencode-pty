@@ -1,5 +1,1 @@
-When to use this tool INSTEAD of the built-in bash tool:
-
-Use pty_spawn for any command that should run in the background, needs to persist beyond the current response, requires interactive input, or is long-running. Examples: dev servers, watch modes, REPLs, builds, database servers, any concurrent process.
-
-Use the built-in bash tool ONLY for quick synchronous commands that complete immediately and produce instant output (e.g., ls, git status, cat, echo, npm install).
+Use this tool for any command that should run in the background, needs to persist beyond the current response, requires interactive input, or is long-running.
