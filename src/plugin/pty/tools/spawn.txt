@@ -1,1 +1,1 @@
-Use this PTY tool for any command that should run in the background, needs to persist beyond the current response, requires interactive input, or is long-running.
+Creates a PTY session for any command that should run in the background, needs to persist beyond the current response, requires interactive input, or is long-running.
