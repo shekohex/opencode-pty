@@ -1,1 +1,1 @@
-Lists all PTY sessions (active and exited) with their status, PID, and line count. Use this to check what background processes are still running and get session IDs for other pty_* tools.
+Lists all PTY sessions (active and exited) with their status, PID, and line count.

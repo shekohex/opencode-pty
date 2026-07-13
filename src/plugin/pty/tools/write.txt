@@ -1,3 +1,1 @@
-Sends input (text or escape sequences) to a running PTY session. Use this to interact with a process spawned via pty_spawn — type commands, send Ctrl+C, respond to prompts.
-
-Common escapes: \n (enter), \x03 (Ctrl+C), \x04 (Ctrl+D), \x1b[A (arrow up).
+Sends input (text or escape sequences) to a running PTY session.

@@ -1,3 +1,1 @@
-Reads output from a running or completed PTY session (spawned via pty_spawn). Supports pagination (offset/limit) and regex pattern filtering.
-
-Use this to check output of background processes. Do NOT poll sessions with notifyOnExit=true — wait for the <pty_exited> notification instead.
+Reads output from a running or completed PTY session.
