@@ -16,11 +16,36 @@ export class NotificationManager {
 
     try {
       const message = this.buildExitNotification(session, exitCode)
+      let modelContext: {
+        model?: { providerID: string; modelID: string }
+        variant?: string
+      } = {}
+      try {
+        const parent = await this.client.session.get({
+          path: { id: session.parentSessionId },
+        })
+        const model = (
+          parent.data as
+            | (typeof parent.data & {
+                model?: { id: string; providerID: string; variant?: string }
+              })
+            | undefined
+        )?.model
+        if (model) {
+          modelContext = {
+            model: { providerID: model.providerID, modelID: model.id },
+            ...(model.variant ? { variant: model.variant } : {}),
+          }
+        }
+      } catch {
+        // Older OpenCode versions may not expose the session model.
+      }
       await this.client.session.promptAsync({
         path: { id: session.parentSessionId },
         body: {
           parts: [{ type: 'text', text: message }],
           ...(session.parentAgent ? { agent: session.parentAgent } : {}),
+          ...modelContext,
         },
       })
     } catch {

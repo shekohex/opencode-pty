@@ -9,6 +9,8 @@ type PromptPayload = {
   body: {
     parts: Array<{ type: string; text: string }>
     agent?: string
+    model?: { providerID: string; modelID: string }
+    variant?: string
   }
 }
 
@@ -38,6 +40,67 @@ function createSession(overrides: Partial<PTYSession> = {}): PTYSession {
 }
 
 describe('NotificationManager', () => {
+  it('preserves the parent session model and variant', async () => {
+    const get = mock(async () => ({
+      data: {
+        model: { providerID: 'openai', id: 'gpt-5.6-terra', variant: 'high' },
+      },
+    }))
+    const promptAsync = mock(async (_payload: PromptPayload) => {})
+    const manager = new NotificationManager()
+
+    manager.init({ session: { get, promptAsync } } as unknown as OpencodeClient)
+
+    await manager.sendExitNotification(createSession(), 0)
+
+    expect(get).toHaveBeenCalledWith({ path: { id: 'parent-session-id' } })
+    const payload = promptAsync.mock.calls[0]?.[0]
+    if (!payload) throw new Error('Expected a prompt payload')
+    expect(payload.body.model).toEqual({
+      providerID: 'openai',
+      modelID: 'gpt-5.6-terra',
+    })
+    expect(payload.body.variant).toBe('high')
+  })
+
+  it('preserves the parent model without inventing a variant', async () => {
+    const get = mock(async () => ({
+      data: { model: { providerID: 'openai', id: 'gpt-5.6-terra' } },
+    }))
+    const promptAsync = mock(async (_payload: PromptPayload) => {})
+    const manager = new NotificationManager()
+
+    manager.init({ session: { get, promptAsync } } as unknown as OpencodeClient)
+
+    await manager.sendExitNotification(createSession(), 0)
+
+    const payload = promptAsync.mock.calls[0]?.[0]
+    if (!payload) throw new Error('Expected a prompt payload')
+    expect(payload.body.model).toEqual({
+      providerID: 'openai',
+      modelID: 'gpt-5.6-terra',
+    })
+    expect(Object.hasOwn(payload.body, 'variant')).toBe(false)
+  })
+
+  it('sends the notification when reading the parent model fails', async () => {
+    const get = mock(async () => {
+      throw new Error('Session API unavailable')
+    })
+    const promptAsync = mock(async (_payload: PromptPayload) => {})
+    const manager = new NotificationManager()
+
+    manager.init({ session: { get, promptAsync } } as unknown as OpencodeClient)
+
+    await manager.sendExitNotification(createSession(), 0)
+
+    expect(promptAsync).toHaveBeenCalledTimes(1)
+    const payload = promptAsync.mock.calls[0]?.[0]
+    if (!payload) throw new Error('Expected a prompt payload')
+    expect(Object.hasOwn(payload.body, 'model')).toBe(false)
+    expect(Object.hasOwn(payload.body, 'variant')).toBe(false)
+  })
+
   it('includes body.agent when originating agent is present', async () => {
     const promptAsync = mock(async (_payload: PromptPayload) => {})
     const manager = new NotificationManager()
@@ -47,7 +110,8 @@ describe('NotificationManager', () => {
     await manager.sendExitNotification(createSession({ parentAgent: 'agent-two' }), 0)
 
     expect(promptAsync).toHaveBeenCalledTimes(1)
-    const payload = promptAsync.mock.calls[0]![0]
+    const payload = promptAsync.mock.calls[0]?.[0]
+    if (!payload) throw new Error('Expected a prompt payload')
 
     expect(payload.path).toEqual({ id: 'parent-session-id' })
     expect(payload.body.agent).toBe('agent-two')
@@ -65,7 +129,8 @@ describe('NotificationManager', () => {
     await manager.sendExitNotification(createSession({ parentAgent: undefined }), 1)
 
     expect(promptAsync).toHaveBeenCalledTimes(1)
-    const payload = promptAsync.mock.calls[0]![0]
+    const payload = promptAsync.mock.calls[0]?.[0]
+    if (!payload) throw new Error('Expected a prompt payload')
 
     expect(payload.path).toEqual({ id: 'parent-session-id' })
     expect(Object.hasOwn(payload.body, 'agent')).toBe(false)
@@ -85,7 +150,8 @@ describe('NotificationManager', () => {
     await manager.sendExitNotification(createSession({ timeoutSeconds: 2, timedOut: true }), 0)
 
     expect(promptAsync).toHaveBeenCalledTimes(1)
-    const payload = promptAsync.mock.calls[0]![0]
+    const payload = promptAsync.mock.calls[0]?.[0]
+    if (!payload) throw new Error('Expected a prompt payload')
     const text = payload.body.parts[0]?.text ?? ''
 
     expect(text).toContain('TimeoutSeconds: 2')
