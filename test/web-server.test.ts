@@ -273,8 +273,13 @@ describe('Web Server', () => {
       expect(bufferData.raw).toBe('line1\r\nline2\r\nline3\r\n')
     })
 
-    it('should return index.html for non-existent endpoints', async () => {
+    it('should return 404 for non-existent endpoints', async () => {
       const response = await fetch(`${managedTestServer.server.server.url}/api/nonexistent`)
+      expect(response.status).toBe(404)
+    }, 200)
+
+    it('should serve the SPA shell at /', async () => {
+      const response = await fetch(managedTestServer.server.server.url)
       expect(response.status).toBe(200)
       const text = await response.text()
       expect(text).toContain('<div id="root"></div>')

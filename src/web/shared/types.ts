@@ -108,4 +108,11 @@ interface HealthResponse {
   websocket: { connections: number }
   memory?: { rss: number; heapUsed: number; heapTotal: number }
   responseTime?: number
+  /**
+   * Whether HTTP Basic Auth is enforced by the web server. The frontend reads
+   * this to decide whether to display the cross-origin warning banner.
+   */
+  authEnabled: boolean
+  /** The username that the server expects (OS user when none configured). */
+  authUsername: string
 }

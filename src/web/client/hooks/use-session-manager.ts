@@ -9,6 +9,12 @@ interface UseSessionManagerOptions {
   subscribeWithRetry: (sessionId: string) => void
   sendInput?: (sessionId: string, data: string) => void
   wsConnected?: boolean
+  /**
+   * When true, kill operations are refused client-side. The server enforces
+   * the same rule on the API (returning 403), so disabling the handler here
+   * avoids a round-trip + an unfriendly error popup.
+   */
+  killBlocked?: boolean
   onRawOutputUpdate?: (rawOutput: string) => void
 }
 
@@ -18,6 +24,7 @@ export function useSessionManager({
   subscribeWithRetry,
   sendInput,
   wsConnected,
+  killBlocked = false,
   onRawOutputUpdate,
 }: UseSessionManagerOptions) {
   const handleSessionClick = useCallback(
@@ -81,6 +88,13 @@ export function useSessionManager({
       return
     }
 
+    if (killBlocked) {
+      alert(
+        'Killing sessions is disabled. Configure PTY_WEB_PASSWORD on the server (and reload the page) to enable kill when accessing the UI from a non-loopback host.'
+      )
+      return
+    }
+
     if (
       !confirm(
         `Are you sure you want to kill session "${activeSession.description ?? activeSession.title}"?`
@@ -94,7 +108,7 @@ export function useSessionManager({
 
       // eslint-disable-next-line no-empty
     } catch {}
-  }, [activeSession])
+  }, [activeSession, killBlocked])
 
   return {
     handleSessionClick,

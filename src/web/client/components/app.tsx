@@ -8,6 +8,71 @@ import { Sidebar } from './sidebar.tsx'
 import { RawTerminal } from './terminal-renderer.tsx'
 import { api } from '../../shared/api-client.ts'
 
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
+
+const AUTH_WARNING_DISMISSED_KEY = 'pty-auth-warning-dismissed'
+
+function isLoopbackHostname(hostname: string): boolean {
+  const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (LOOPBACK_HOSTS.has(normalized)) return true
+  if (normalized.startsWith('::ffff:')) {
+    return LOOPBACK_HOSTS.has(normalized.slice('::ffff:'.length))
+  }
+  return false
+}
+
+function useAuthStatus() {
+  const [authEnabled, setAuthEnabled] = useState(false)
+  const [authUsername, setAuthUsername] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const response = await fetch('/health', { credentials: 'same-origin' })
+        if (!response.ok) return
+        const data = (await response.json()) as {
+          authEnabled?: boolean
+          authUsername?: string
+        }
+        if (cancelled) return
+        setAuthEnabled(data.authEnabled === true)
+        setAuthUsername(typeof data.authUsername === 'string' ? data.authUsername : '')
+      } catch {
+        // Network failure is fine; leave defaults so the UI stays usable.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return { authEnabled, authUsername }
+}
+
+function useNonLoopback() {
+  return useState(() => !isLoopbackHostname(window.location.hostname))[0]
+}
+
+function useDismissedAuthWarning() {
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(AUTH_WARNING_DISMISSED_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const dismiss = useCallback(() => {
+    setDismissed(true)
+    try {
+      localStorage.setItem(AUTH_WARNING_DISMISSED_KEY, '1')
+    } catch {
+      // Ignore quota / privacy-mode failures; the in-memory flag still hides it.
+    }
+  }, [])
+  return { dismissed, dismiss }
+}
+
 export function App() {
   const [sessions, setSessions] = useState<PTYSessionInfo[]>([])
   const [activeSession, setActiveSession] = useState<PTYSessionInfo | null>(null)
@@ -16,6 +81,12 @@ export function App() {
   const [connected, setConnected] = useState(false)
   const [wsMessageCount, setWsMessageCount] = useState(0)
   const [sessionUpdateCount, setSessionUpdateCount] = useState(0)
+
+  const { authEnabled } = useAuthStatus()
+  const nonLoopback = useNonLoopback()
+  const { dismissed: authWarningDismissed, dismiss: dismissAuthWarning } = useDismissedAuthWarning()
+  const showAuthWarning = nonLoopback && !authEnabled && !authWarningDismissed
+  const killBlocked = nonLoopback && !authEnabled
 
   const {
     connected: wsConnected,
@@ -89,6 +160,7 @@ export function App() {
     subscribeWithRetry,
     sendInput,
     wsConnected,
+    killBlocked,
     onRawOutputUpdate: useCallback((rawOutput: string) => {
       setRawOutput(rawOutput)
     }, []),
@@ -96,6 +168,24 @@ export function App() {
 
   return (
     <div className="container" data-active-session={activeSession?.id}>
+      {showAuthWarning && (
+        <output className="auth-warning" data-testid="auth-warning" aria-live="polite">
+          <span className="auth-warning-icon" aria-hidden="true">
+            ⚠
+          </span>
+          <span className="auth-warning-text">
+            Auth disabled. Set <code>PTY_WEB_PASSWORD</code> to secure kill/cleanup.
+          </span>
+          <button
+            type="button"
+            className="auth-warning-dismiss"
+            aria-label="Dismiss"
+            onClick={dismissAuthWarning}
+          >
+            ×
+          </button>
+        </output>
+      )}
       <Sidebar
         sessions={sessions}
         activeSession={activeSession}
@@ -107,7 +197,17 @@ export function App() {
           <>
             <div className="output-header">
               <div className="output-title">{activeSession.description ?? activeSession.title}</div>
-              <button type="button" className="kill-btn" onClick={handleKillSession}>
+              <button
+                type="button"
+                className="kill-btn"
+                onClick={handleKillSession}
+                disabled={killBlocked}
+                title={
+                  killBlocked
+                    ? 'Killing sessions is disabled because HTTP Basic Auth is not configured and the UI is being accessed from a non-loopback host.'
+                    : undefined
+                }
+              >
                 Kill Session
               </button>
             </div>
