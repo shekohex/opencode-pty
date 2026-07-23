@@ -81,12 +81,12 @@ export function App() {
   const [connected, setConnected] = useState(false)
   const [wsMessageCount, setWsMessageCount] = useState(0)
   const [sessionUpdateCount, setSessionUpdateCount] = useState(0)
-
   const { authEnabled } = useAuthStatus()
   const nonLoopback = useNonLoopback()
   const { dismissed: authWarningDismissed, dismiss: dismissAuthWarning } = useDismissedAuthWarning()
   const showAuthWarning = nonLoopback && !authEnabled && !authWarningDismissed
   const killBlocked = nonLoopback && !authEnabled
+  const inputBlocked = killBlocked
 
   const {
     connected: wsConnected,
@@ -161,6 +161,7 @@ export function App() {
     sendInput,
     wsConnected,
     killBlocked,
+    inputBlocked,
     onRawOutputUpdate: useCallback((rawOutput: string) => {
       setRawOutput(rawOutput)
     }, []),
@@ -218,8 +219,15 @@ export function App() {
                 onSendInput={handleSendInput}
                 onInterrupt={handleKillSession}
                 disabled={!activeSession || activeSession.status !== 'running'}
+                readOnly={inputBlocked}
               />
             </div>
+            {inputBlocked && (
+              <output className="terminal-readonly-banner">
+                Read-only — input is disabled because HTTP Basic Auth is not configured and the UI
+                is being accessed from a non-loopback host. Selection, copy, and paste still work.
+              </output>
+            )}
             <div className="debug-info" data-testid="debug-info">
               Debug: {rawOutput.length} chars, active: {activeSession?.id || 'none'}, WS raw_data:{' '}
               {wsMessageCount}, session_updates: {sessionUpdateCount}

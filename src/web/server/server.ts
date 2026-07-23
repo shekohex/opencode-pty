@@ -1,6 +1,6 @@
 import type { Server } from 'bun'
 import { routes } from '../shared/routes.ts'
-import { isLoopbackOriginRequest, WebAuth } from './auth.ts'
+import { isLoopbackHostRequest, isLoopbackOriginRequest, WebAuth } from './auth.ts'
 import { CallbackManager } from './callback-manager.ts'
 import { handleHealth } from './handlers/health.ts'
 import {
@@ -16,7 +16,7 @@ import {
 } from './handlers/sessions.ts'
 import { buildStaticRoutes, type StaticAssets } from './handlers/static.ts'
 import { ErrorResponse } from './handlers/responses.ts'
-import { handleWebSocketMessage } from './handlers/websocket.ts'
+import { handleWebSocketMessage, type WebSocketConnectionState } from './handlers/websocket.ts'
 
 export interface PTYServerOptions {
   /**
@@ -27,7 +27,7 @@ export interface PTYServerOptions {
 }
 
 export class PTYServer implements Disposable {
-  public readonly server: Server<undefined>
+  public readonly server: Server<WebSocketConnectionState>
   private readonly staticAssets: StaticAssets
   private readonly stack = new DisposableStack()
   private readonly auth: WebAuth
@@ -50,7 +50,7 @@ export class PTYServer implements Disposable {
     return new PTYServer(staticAssets, auth)
   }
 
-  private startWebServer(): Server<undefined> {
+  private startWebServer(): Server<WebSocketConnectionState> {
     // Single `fetch` handler — matches opencode-mem's architecture. Using
     // Bun's typed `routes` map routes static assets around the auth gate
     // (their 200 response carries no `WWW-Authenticate`), which Safari's
@@ -142,28 +142,43 @@ export class PTYServer implements Disposable {
       if (req.headers.get('upgrade') !== 'websocket') {
         return new Response('WebSocket endpoint - use WebSocket upgrade', { status: 426 })
       }
-      const success = this.server.upgrade(req)
+      // Attach a `writable` flag so the message handler can reject
+      // `input` / `spawn` payloads when the upgrade originated from a
+      // non-loopback client and auth is disabled. We still upgrade (so the
+      // client can stream `session_list` + `raw_data` and watch the live
+      // terminal read-only) — we just refuse to act on write commands.
+      //
+      // WS upgrades rarely carry an `Origin` header (most non-browser WS
+      // clients, including Bun's own `WebSocket`, don't send one), so we
+      // fall back to inspecting `Host` — which mirrors how the client typed
+      // the URL and therefore correctly distinguishes "they connected via
+      // 127.0.0.1" from "they connected via 192.168.x.y".
+      const writable = this.auth.isEnabled() || isLoopbackHostRequest(req)
+      const success = this.server.upgrade(req, {
+        data: { writable },
+      })
       if (success) return undefined
       return new Response('WebSocket upgrade failed', { status: 400 })
     }
 
-    // Destructive operations get an extra origin-based guard when auth is
-    // disabled, so an unauthenticated LAN visitor can't take down sessions.
-    const checkKillGuard = (): Response | null => {
+    // All destructive or write paths (create / kill / cleanup / clear / input)
+    // get an extra origin-based guard when auth is disabled, so an
+    // unauthenticated LAN visitor can't spawn processes or type into an
+    // interactive PTY. The frontend still gets to view output via the read-only
+    // GET / buffer / WS subscription paths.
+    const requireWritableOrigin = (): Response | null => {
       if (this.auth.isEnabled() || isLoopbackOriginRequest(req)) return null
       return new ErrorResponse(
-        'Killing sessions from a non-loopback origin requires HTTP Basic Auth to be configured. ' +
-          'Set the PTY_WEB_PASSWORD environment variable (and reload the web UI) to enable kill.',
+        'Writing to PTYs from a non-loopback origin requires HTTP Basic Auth to be configured. ' +
+          'Set the PTY_WEB_PASSWORD environment variable (and reload the web UI) to enable input, kill, and session creation.',
         403
       )
     }
 
     if (path === routes.sessions.path) {
       if (method === 'GET') return getSessions()
-      if (method === 'POST') return createSession(req)
-      if (method === 'DELETE') {
-        return checkKillGuard() ?? clearSessions()
-      }
+      if (method === 'POST') return requireWritableOrigin() ?? createSession(req)
+      if (method === 'DELETE') return requireWritableOrigin() ?? clearSessions()
     }
 
     // Match `/api/sessions/:id` and the four sub-routes that hang off it.
@@ -178,7 +193,7 @@ export class PTYServer implements Disposable {
       const bunReq = withParams(req, routes.session.path, { id: sessionMatch[1] ?? '' })
       if (method === 'GET') return getSession(bunReq)
       if (method === 'DELETE') {
-        return checkKillGuard() ?? killSession(bunReq)
+        return requireWritableOrigin() ?? killSession(bunReq)
       }
     }
 
@@ -188,7 +203,7 @@ export class PTYServer implements Disposable {
         id: cleanupMatch[1] ?? '',
       })
       if (method === 'DELETE') {
-        return checkKillGuard() ?? cleanupSession(bunReq)
+        return requireWritableOrigin() ?? cleanupSession(bunReq)
       }
     }
 
@@ -197,7 +212,7 @@ export class PTYServer implements Disposable {
       const bunReq = withParams(req, routes.session.input.path, {
         id: inputMatch[1] ?? '',
       })
-      if (method === 'POST') return sendInput(bunReq)
+      if (method === 'POST') return requireWritableOrigin() ?? sendInput(bunReq)
     }
 
     const rawMatch = path.match(rawBufferPattern)

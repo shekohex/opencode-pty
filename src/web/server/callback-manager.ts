@@ -6,9 +6,10 @@ import {
 } from '../../plugin/pty/manager'
 import type { PTYSessionInfo } from '../../plugin/pty/types'
 import type { WSMessageServerSessionUpdate, WSMessageServerRawData } from '../shared/types'
+import type { WebSocketConnectionState } from './handlers/websocket.ts'
 
 export class CallbackManager implements Disposable {
-  constructor(private server: Bun.Server<undefined>) {
+  constructor(private server: Bun.Server<WebSocketConnectionState>) {
     this.server = server
     registerSessionUpdateCallback(this.sessionUpdateCallback)
     registerRawOutputCallback(this.rawOutputCallback)

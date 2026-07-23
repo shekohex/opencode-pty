@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  isLoopbackHostRequest,
   isLoopbackOriginRequest,
   SESSION_COOKIE_NAME,
   WebAuth,
@@ -196,6 +197,32 @@ describe('isLoopbackOriginRequest', () => {
         headers: origin ? { Origin: origin } : {},
       })
       expect(isLoopbackOriginRequest(req)).toBe(expected)
+    })
+  }
+})
+
+describe('isLoopbackHostRequest', () => {
+  // The `Host` header (used for WebSocket upgrade checks since non-browser
+  // WS clients rarely send `Origin`) is `hostname[:port]`.
+  const cases: Array<{ host: string | null; expected: boolean }> = [
+    { host: null, expected: true },
+    { host: 'localhost:60134', expected: true },
+    { host: 'localhost', expected: true },
+    { host: '127.0.0.1:60134', expected: true },
+    { host: '127.0.0.1', expected: true },
+    { host: '[::1]:60134', expected: true },
+    { host: '[::1]', expected: true },
+    { host: '192.168.1.10:60134', expected: false },
+    { host: '192.168.1.10', expected: false },
+    { host: 'example.com:443', expected: false },
+  ]
+
+  for (const { host, expected } of cases) {
+    it(`returns ${String(expected)} for host=${String(host)}`, () => {
+      const req = new Request('http://example.com/api/sessions', {
+        headers: host ? { Host: host } : {},
+      })
+      expect(isLoopbackHostRequest(req)).toBe(expected)
     })
   }
 })

@@ -1,9 +1,13 @@
 import { manager } from '../../../plugin/pty/manager.ts'
 import type { WebAuth } from '../auth.ts'
+import type { WebSocketConnectionState } from './websocket.ts'
 import { JsonResponse } from './responses.ts'
 import type { HealthResponse } from '../../shared/types.ts'
 
-export function handleHealth(server: Bun.Server<undefined>, auth: WebAuth | null = null) {
+export function handleHealth(
+  server: Bun.Server<WebSocketConnectionState>,
+  auth: WebAuth | null = null
+) {
   const sessions = manager.list()
   const activeSessions = sessions.filter((s) => s.status === 'running').length
   const totalSessions = sessions.length

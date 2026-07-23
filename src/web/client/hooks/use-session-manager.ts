@@ -10,11 +10,16 @@ interface UseSessionManagerOptions {
   sendInput?: (sessionId: string, data: string) => void
   wsConnected?: boolean
   /**
-   * When true, kill operations are refused client-side. The server enforces
-   * the same rule on the API (returning 403), so disabling the handler here
-   * avoids a round-trip + an unfriendly error popup.
+   * When true, all PTY mutations (input, kill, cleanup) are refused client-side.
+   * The server enforces the same rule (403), so disabling the handlers here
+   * avoids round-trips + unfriendly error popups.
    */
   killBlocked?: boolean
+  /**
+   * When true, input into the PTY is forbidden but the user can still select,
+   * copy, and paste. Mirrors the server-side read-only WS upgrade state.
+   */
+  inputBlocked?: boolean
   onRawOutputUpdate?: (rawOutput: string) => void
 }
 
@@ -25,6 +30,7 @@ export function useSessionManager({
   sendInput,
   wsConnected,
   killBlocked = false,
+  inputBlocked = false,
   onRawOutputUpdate,
 }: UseSessionManagerOptions) {
   const handleSessionClick = useCallback(
@@ -64,6 +70,12 @@ export function useSessionManager({
         return
       }
 
+      if (inputBlocked) {
+        // The xterm layer should already be swallowing keys; this guard
+        // covers the HTTP fallback path used when the WS path is unavailable.
+        return
+      }
+
       // Try WebSocket first if connected and available
       if (wsConnected && sendInput) {
         try {
@@ -80,7 +92,7 @@ export function useSessionManager({
         // eslint-disable-next-line no-empty
       } catch {}
     },
-    [activeSession, wsConnected, sendInput]
+    [activeSession, wsConnected, sendInput, inputBlocked]
   )
 
   const handleKillSession = useCallback(async () => {

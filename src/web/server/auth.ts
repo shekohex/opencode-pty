@@ -42,6 +42,22 @@ export function isLoopbackOriginRequest(req: Request): boolean {
   }
 }
 
+/**
+ * Variant of {@link isLoopbackOriginRequest} that inspects the `Host` header
+ * instead of `Origin`. We need this for WebSocket upgrades because most
+ * non-browser WS clients (and Bun's own `WebSocket` class) do NOT send an
+ * `Origin` header on the upgrade — the only reliable signal of "did the
+ * client reach us via a loopback address" is then the `Host` they connected
+ * to (which mirrors how they typed the URL).
+ */
+export function isLoopbackHostRequest(req: Request): boolean {
+  const host = req.headers.get('Host')
+  if (!host) return true
+  // Host is `hostname[:port]` — peel the port before checking.
+  const hostname = host.replace(/:\d+$/, '')
+  return isLoopbackHostname(hostname)
+}
+
 export interface WebAuthOptions {
   /** Plain-text password used for HTTP Basic Auth. Empty/undefined disables auth. */
   password?: string

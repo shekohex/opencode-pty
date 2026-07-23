@@ -17,15 +17,25 @@ import {
   type WSMessageServerUnsubscribedSession,
 } from '../../shared/types'
 
+/** Per-connection state attached at WebSocket upgrade time. */
+export interface WebSocketConnectionState {
+  /**
+   * Whether this connection is allowed to push data into PTYs (via the
+   * `input` message) or create new sessions (via `spawn`). Determined at
+   * upgrade time from the auth gate + the request's Origin header.
+   */
+  writable: boolean
+}
+
 class WebSocketHandler {
-  private sendSessionList(ws: ServerWebSocket<undefined>): void {
+  private sendSessionList(ws: ServerWebSocket<WebSocketConnectionState>): void {
     const sessions = manager.list()
     const message: WSMessageServerSessionList = { type: 'session_list', sessions }
     ws.send(JSON.stringify(message))
   }
 
   private handleSubscribe(
-    ws: ServerWebSocket<undefined>,
+    ws: ServerWebSocket<WebSocketConnectionState>,
     message: WSMessageClientSubscribeSession
   ): void {
     const session = manager.get(message.sessionId)
@@ -46,7 +56,7 @@ class WebSocketHandler {
   }
 
   private handleUnsubscribe(
-    ws: ServerWebSocket<undefined>,
+    ws: ServerWebSocket<WebSocketConnectionState>,
     message: WSMessageClientUnsubscribeSession
   ): void {
     const topic = `session:${message.sessionId}`
@@ -59,13 +69,16 @@ class WebSocketHandler {
   }
 
   private handleSessionListRequest(
-    ws: ServerWebSocket<undefined>,
+    ws: ServerWebSocket<WebSocketConnectionState>,
     _message: WSMessageClientSessionList
   ): void {
     this.sendSessionList(ws)
   }
 
-  private handleUnknownMessage(ws: ServerWebSocket<undefined>, message: WSMessageClient): void {
+  private handleUnknownMessage(
+    ws: ServerWebSocket<WebSocketConnectionState>,
+    message: WSMessageClient
+  ): void {
     const error: WSMessageServerError = {
       type: 'error',
       error: new CustomError(`Unknown message type ${message.type}`),
@@ -74,7 +87,7 @@ class WebSocketHandler {
   }
 
   public handleWebSocketMessage(
-    ws: ServerWebSocket<undefined>,
+    ws: ServerWebSocket<WebSocketConnectionState>,
     data: string | Buffer<ArrayBuffer>
   ): void {
     if (typeof data !== 'string') {
@@ -102,10 +115,18 @@ class WebSocketHandler {
           break
 
         case 'spawn':
+          if (!isWritable(ws)) {
+            sendWriteError(ws)
+            break
+          }
           void this.handleSpawn(ws, message as WSMessageClientSpawnSession)
           break
 
         case 'input':
+          if (!isWritable(ws)) {
+            sendWriteError(ws)
+            break
+          }
           this.handleInput(message as WSMessageClientInput)
           break
 
@@ -125,7 +146,10 @@ class WebSocketHandler {
     }
   }
 
-  private async handleSpawn(ws: ServerWebSocket<undefined>, message: WSMessageClientSpawnSession) {
+  private async handleSpawn(
+    ws: ServerWebSocket<WebSocketConnectionState>,
+    message: WSMessageClientSpawnSession
+  ) {
     try {
       await checkCommandPermission(message.command, message.args ?? [])
       if (message.workdir) {
@@ -149,7 +173,10 @@ class WebSocketHandler {
     manager.write(message.sessionId, message.data)
   }
 
-  private handleReadRaw(ws: ServerWebSocket<undefined>, message: WSMessageClientReadRaw) {
+  private handleReadRaw(
+    ws: ServerWebSocket<WebSocketConnectionState>,
+    message: WSMessageClientReadRaw
+  ) {
     const rawData = manager.getRawBuffer(message.sessionId)
     if (!rawData) {
       const error: WSMessageServerError = {
@@ -169,9 +196,23 @@ class WebSocketHandler {
 }
 
 export function handleWebSocketMessage(
-  ws: ServerWebSocket<undefined>,
+  ws: ServerWebSocket<WebSocketConnectionState>,
   data: string | Buffer<ArrayBuffer>
 ): void {
   const handler = new WebSocketHandler()
   handler.handleWebSocketMessage(ws, data)
+}
+
+function isWritable(ws: ServerWebSocket<WebSocketConnectionState>): boolean {
+  return ws.data?.writable === true
+}
+
+function sendWriteError(ws: ServerWebSocket<WebSocketConnectionState>): void {
+  const error: WSMessageServerError = {
+    type: 'error',
+    error: new CustomError(
+      'Writing to PTYs is disabled from this origin. Set PTY_WEB_PASSWORD on the server (and reload) to enable input and session creation.'
+    ),
+  }
+  ws.send(JSON.stringify(error))
 }
