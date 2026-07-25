@@ -9,6 +9,17 @@ interface UseSessionManagerOptions {
   subscribeWithRetry: (sessionId: string) => void
   sendInput?: (sessionId: string, data: string) => void
   wsConnected?: boolean
+  /**
+   * When true, all PTY mutations (input, kill, cleanup) are refused client-side.
+   * The server enforces the same rule (403), so disabling the handlers here
+   * avoids round-trips + unfriendly error popups.
+   */
+  killBlocked?: boolean
+  /**
+   * When true, input into the PTY is forbidden but the user can still select,
+   * copy, and paste. Mirrors the server-side read-only WS upgrade state.
+   */
+  inputBlocked?: boolean
   onRawOutputUpdate?: (rawOutput: string) => void
 }
 
@@ -18,6 +29,8 @@ export function useSessionManager({
   subscribeWithRetry,
   sendInput,
   wsConnected,
+  killBlocked = false,
+  inputBlocked = false,
   onRawOutputUpdate,
 }: UseSessionManagerOptions) {
   const handleSessionClick = useCallback(
@@ -57,6 +70,12 @@ export function useSessionManager({
         return
       }
 
+      if (inputBlocked) {
+        // The xterm layer should already be swallowing keys; this guard
+        // covers the HTTP fallback path used when the WS path is unavailable.
+        return
+      }
+
       // Try WebSocket first if connected and available
       if (wsConnected && sendInput) {
         try {
@@ -73,11 +92,18 @@ export function useSessionManager({
         // eslint-disable-next-line no-empty
       } catch {}
     },
-    [activeSession, wsConnected, sendInput]
+    [activeSession, wsConnected, sendInput, inputBlocked]
   )
 
   const handleKillSession = useCallback(async () => {
     if (!activeSession) {
+      return
+    }
+
+    if (killBlocked) {
+      alert(
+        'Killing sessions is disabled. Configure PTY_WEB_PASSWORD on the server (and reload the page) to enable kill when accessing the UI from a non-loopback host.'
+      )
       return
     }
 
@@ -94,7 +120,7 @@ export function useSessionManager({
 
       // eslint-disable-next-line no-empty
     } catch {}
-  }, [activeSession])
+  }, [activeSession, killBlocked])
 
   return {
     handleSessionClick,

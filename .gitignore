@@ -48,5 +48,8 @@ devenv.local.yaml
 # direnv
 .direnv
 
+# codegraph index
+.codegraph/
+
 # pre-commit
 .pre-commit-config.yaml

@@ -234,6 +234,34 @@ This eliminates the need for polling—perfect for long-running processes like b
 | `PTY_MAX_BUFFER_LINES` | `50000`    | Maximum lines to keep in output buffer per session |
 | `PTY_WEB_HOSTNAME`     | `::1`      | Hostname for the web server to bind to (IPv6 loopback by default) |
 | `PTY_WEB_PORT`         | `0` (random) | Port for the web server (0 = random port)        |
+| `PTY_WEB_USERNAME`     | OS user    | Username accepted by the HTTP Basic Auth gate. Defaults to the OS account that launched the plugin |
+| `PTY_WEB_PASSWORD`     | unset      | When set, every API request (including the WebSocket upgrade and the SPA shell) must carry `Authorization: Basic …` credentials. When unset, the API is open to anyone who can reach the bind address |
+
+### Web UI Authentication
+
+The web server is fully open by default. When you bind it to anything other than a
+loopback address (e.g. `PTY_WEB_HOSTNAME=0.0.0.0` so a phone on the same network can
+use it), set `PTY_WEB_PASSWORD` so the browser surfaces its native HTTP Basic Auth
+prompt and unauthorized clients can no longer read your sessions:
+
+```bash
+PTY_WEB_PASSWORD="choose-something-strong" opencode
+# Optionally pin the username (defaults to the OS user running opencode):
+PTY_WEB_USERNAME="me" PTY_WEB_PASSWORD="choose-something-strong" opencode
+```
+
+Behavior:
+
+- `/health` is **always** unauthenticated — the frontend uses it to figure out
+  whether auth is on.
+- When `PTY_WEB_PASSWORD` is set, every other route (`/api/*`, `/ws`, the SPA
+  shell, the 302 redirect) returns `401` with `WWW-Authenticate: Basic …` until
+  the correct `Authorization: Basic base64(user:pass)` header is presented.
+- When `PTY_WEB_PASSWORD` is **not** set and the page is loaded from a non-loopback
+  host, the UI shows a banner reminding you to enable Basic Auth, and the
+  `Kill Session` / `Ctrl+C` kill path is server-blocked (`403`) for non-loopback
+  origins so a passer-by can't take down your sessions. Loopback access always
+  keeps the previous, fully-open behavior.
 
 ### Permissions
 

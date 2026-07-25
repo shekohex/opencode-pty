@@ -4,7 +4,10 @@ import { manager } from '../src/plugin/pty/manager.ts'
 import { initPermissions } from '../src/plugin/pty/permissions.ts'
 import type { PTYSessionInfo } from '../src/plugin/pty/types.ts'
 import { createSession } from '../src/web/server/handlers/sessions.ts'
-import { handleWebSocketMessage } from '../src/web/server/handlers/websocket.ts'
+import {
+  handleWebSocketMessage,
+  type WebSocketConnectionState,
+} from '../src/web/server/handlers/websocket.ts'
 import type { WSMessageServerError } from '../src/web/shared/types.ts'
 
 type TestPermissionConfig = {
@@ -43,7 +46,10 @@ function buildSpawnInfo(overrides: Partial<PTYSessionInfo> = {}): PTYSessionInfo
   }
 }
 
-function createFakeWebSocket(sentMessages: string[]): ServerWebSocket<undefined> {
+function createFakeWebSocket(
+  sentMessages: string[],
+  writable = true
+): ServerWebSocket<WebSocketConnectionState> {
   return {
     send: (message: string) => {
       sentMessages.push(message)
@@ -52,7 +58,8 @@ function createFakeWebSocket(sentMessages: string[]): ServerWebSocket<undefined>
     subscribe: () => {},
     unsubscribe: () => {},
     subscriptions: new Set<string>(),
-  } as unknown as ServerWebSocket<undefined>
+    data: { writable },
+  } as unknown as ServerWebSocket<WebSocketConnectionState>
 }
 
 describe('web permission enforcement', () => {

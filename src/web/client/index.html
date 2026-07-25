@@ -194,6 +194,81 @@
       .connection-status.disconnected {
         color: #da3633;
       }
+      .kill-btn:disabled,
+      .kill-btn[disabled] {
+        background: #484f58;
+        color: #8b949e;
+        cursor: not-allowed;
+      }
+      .kill-btn:disabled:hover,
+      .kill-btn[disabled]:hover {
+        background: #484f58;
+      }
+      .auth-warning {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 1000;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 380px;
+        border: 1px solid #d29922;
+        background: rgba(36, 28, 14, 0.92);
+        color: #e3b341;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.4;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+      }
+      .auth-warning-icon {
+        flex-shrink: 0;
+        font-size: 14px;
+      }
+      .auth-warning-text {
+        color: #e3b341;
+      }
+      .auth-warning code {
+        font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-size: 11px;
+        color: #f0c674;
+      }
+      .terminal-readonly-banner {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        margin-top: 4px;
+        border: 1px solid #d29922;
+        background: rgba(210, 153, 34, 0.08);
+        color: #e3b341;
+        font-size: 12px;
+        line-height: 1.4;
+        border-radius: 4px;
+      }
+      .xterm-readonly .xterm-viewport,
+      .xterm-readonly .xterm-screen {
+        opacity: 0.85;
+      }
+      .auth-warning-dismiss {
+        background: transparent;
+        border: none;
+        color: #e3b341;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        padding: 0 2px;
+        margin-left: 4px;
+        opacity: 0.7;
+      }
+      .auth-warning-dismiss:hover {
+        opacity: 1;
+      }
     </style>
   </head>
   <body>
