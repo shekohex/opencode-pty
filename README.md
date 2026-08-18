@@ -60,6 +60,7 @@ opencode
 | `pty_read`  | Read output buffer with pagination and optional regex filtering             |
 | `pty_list`  | List all PTY sessions with status, PID, line count                          |
 | `pty_kill`  | Terminate a PTY, optionally cleanup the buffer                              |
+| `pty_wait`  | Block until a PTY session exits, optionally with a timeout                  |
 
 ## Slash Commands
 
@@ -224,6 +225,31 @@ Use pty_read to check the full output.
 ```
 
 This eliminates the need for polling—perfect for long-running processes like builds, tests, or deployment scripts. If the process fails (non-zero exit code), the notification will suggest using `pty_read` with the `pattern` parameter to search for errors.
+
+### Wait for a session to finish
+
+Exit notifications require the agent to go idle and wait for the `<pty_exited>` message.
+```
+pty_spawn: command="npm", args=["run", "build"], title="Build"
+→ Returns: pty_a1b2c3d4
+
+pty_wait: id="pty_a1b2c3d4"
+→ Returns once the build finishes (or <pty_wait_timeout> after timeoutSeconds)
+```
+
+```xml
+<pty_waited>
+ID: pty_a1b2c3d4
+Title: Build
+Command: npm run build
+Status: exited
+Exit: 0
+Output Lines: 42
+Tail: ...
+</pty_waited>
+```
+
+Use when the agent cannot go idle—for example when a `/goal` plugin auto-resumes idle agents, or when a subagent's parent interprets idleness as task completion.
 
 ## Configuration
 

@@ -33,7 +33,7 @@ export function removeSessionUpdateCallback(callback: SessionUpdateCallback) {
 }
 
 function notifySessionUpdate(session: PTYSessionInfo) {
-  for (const callback of sessionUpdateCallbacks) {
+  for (const callback of [...sessionUpdateCallbacks]) {
     try {
       callback(session)
     } catch {
