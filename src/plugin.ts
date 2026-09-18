@@ -1,6 +1,5 @@
 import type { PluginContext, PluginResult } from './plugin/types.ts'
-import { initManager, manager } from './plugin/pty/manager.ts'
-import { initPermissions } from './plugin/pty/permissions.ts'
+import { createV1Adapter, installHostAdapter } from './adapters/index.ts'
 import { ptySpawn } from './plugin/pty/tools/spawn.ts'
 import { ptyWrite } from './plugin/pty/tools/write.ts'
 import { ptyRead } from './plugin/pty/tools/read.ts'
@@ -12,9 +11,10 @@ import open from 'open'
 const ptyOpenClientCommand = 'pty-open-background-spy'
 const ptyShowServerUrlCommand = 'pty-show-server-url'
 
-export const PTYPlugin = async ({ client, directory }: PluginContext): Promise<PluginResult> => {
-  initPermissions(client, directory)
-  initManager(client)
+export const PTYPlugin = async (context: PluginContext): Promise<PluginResult> => {
+  const { client } = context
+  const adapter = createV1Adapter(context)
+  installHostAdapter(adapter)
   let ptyServer: PTYServer | undefined
 
   return {
@@ -66,7 +66,7 @@ export const PTYPlugin = async ({ client, directory }: PluginContext): Promise<P
     },
     event: async ({ event }) => {
       if (event.type === 'session.deleted') {
-        manager.cleanupBySession(event.properties.info.id)
+        adapter.onSessionDeleted?.(event.properties.info.id)
       }
     },
   }

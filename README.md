@@ -29,6 +29,8 @@ This plugin gives the agent full control over multiple terminal sessions, like t
 
 ## Setup
 
+### OpenCode V1
+
 Add the plugin to your [OpenCode config](https://opencode.ai/docs/config/):
 
 ```json
@@ -38,7 +40,33 @@ Add the plugin to your [OpenCode config](https://opencode.ai/docs/config/):
 }
 ```
 
-That's it. OpenCode will automatically install the plugin on next run.
+### OpenCode V2
+
+OpenCode V2 uses the new plugin API. You can load `opencode-pty/v2` and optionally configure options (such as a fixed web UI port):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    {
+      "package": "opencode-pty/v2",
+      "options": {
+        "port": 4200,
+        "hostname": "127.0.0.1",
+        "autostart": false
+      }
+    }
+  ]
+}
+```
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `port` | `number` | `0` (ephemeral) | Fixed port for the PTY Web UI observer server |
+| `hostname` | `string` | `"::1"` | Hostname to bind the PTY Web UI server to |
+| `autostart` | `boolean` | `false` | Automatically start the Web UI server on startup |
+
+OpenCode will automatically install the plugin on next run.
 
 ## Updating
 

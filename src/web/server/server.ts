@@ -17,13 +17,20 @@ import { buildStaticRoutes } from './handlers/static.ts'
 import { handleUpgrade } from './handlers/upgrade.ts'
 import { handleWebSocketMessage } from './handlers/websocket.ts'
 
+export interface ServerOptions {
+  port?: number
+  hostname?: string
+}
+
 export class PTYServer implements Disposable {
   public readonly server: Server<undefined>
   private readonly staticRoutes: Record<string, Response>
   private readonly stack = new DisposableStack()
+  private readonly options?: ServerOptions
 
-  private constructor(staticRoutes: Record<string, Response>) {
+  private constructor(staticRoutes: Record<string, Response>, options?: ServerOptions) {
     this.staticRoutes = staticRoutes
+    this.options = options
     this.server = this.startWebServer()
     this.stack.use(this.server)
     this.stack.use(new CallbackManager(this.server))
@@ -33,16 +40,20 @@ export class PTYServer implements Disposable {
     this.stack.dispose()
   }
 
-  public static async createServer(): Promise<PTYServer> {
+  public static async createServer(options?: ServerOptions): Promise<PTYServer> {
     const staticRoutes = await buildStaticRoutes()
 
-    return new PTYServer(staticRoutes)
+    return new PTYServer(staticRoutes, options)
   }
 
   private startWebServer(): Server<undefined> {
+    const port =
+      this.options?.port ?? (process.env.PTY_WEB_PORT ? parseInt(process.env.PTY_WEB_PORT, 10) : 0)
+    const hostname = this.options?.hostname ?? process.env.PTY_WEB_HOSTNAME ?? '::1'
+
     return Bun.serve({
-      port: process.env.PTY_WEB_PORT ? parseInt(process.env.PTY_WEB_PORT, 10) : 0,
-      hostname: process.env.PTY_WEB_HOSTNAME ?? '::1',
+      port,
+      hostname,
 
       routes: {
         ...this.staticRoutes,

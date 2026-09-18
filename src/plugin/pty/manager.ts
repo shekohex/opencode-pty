@@ -1,3 +1,4 @@
+import type { SessionNotifier } from '../../adapters/types.ts'
 import type { OpencodeClient } from '@opencode-ai/sdk'
 import { Terminal } from 'bun-pty'
 import { NotificationManager } from './notification-manager.ts'
@@ -71,9 +72,19 @@ class PTYManager {
   private lifecycleManager = new SessionLifecycleManager()
   private outputManager = new OutputManager()
   private notificationManager = new NotificationManager()
+  private notifier: SessionNotifier | null = null
+
+  setNotifier(notifier: SessionNotifier | null): void {
+    this.notifier = notifier
+  }
+
+  getNotifier(): SessionNotifier | null {
+    return this.notifier ?? this.notificationManager
+  }
 
   init(client: OpencodeClient): void {
     this.notificationManager.init(client)
+    this.notifier = this.notificationManager
   }
 
   clearAllSessions(): void {
@@ -89,7 +100,8 @@ class PTYManager {
       async (session, exitCode) => {
         notifySessionUpdate(this.lifecycleManager.toInfo(session))
         if (session?.notifyOnExit) {
-          await this.notificationManager.sendExitNotification(session, exitCode || 0)
+          const activeNotifier = this.notifier ?? this.notificationManager
+          await activeNotifier.sendExitNotification(session, exitCode || 0)
         }
       }
     )
@@ -162,4 +174,8 @@ export const manager = new PTYManager()
 
 export function initManager(opcClient: OpencodeClient): void {
   manager.init(opcClient)
+}
+
+export function setManagerNotifier(notifier: SessionNotifier | null): void {
+  manager.setNotifier(notifier)
 }

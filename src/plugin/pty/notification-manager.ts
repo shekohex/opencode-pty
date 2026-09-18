@@ -1,8 +1,9 @@
+import type { SessionNotifier } from '../../adapters/types.ts'
 import type { PTYSession } from './types.ts'
 import type { OpencodeClient } from '@opencode-ai/sdk'
 import { NOTIFICATION_LINE_TRUNCATE, NOTIFICATION_TITLE_TRUNCATE } from '../constants.ts'
 
-export class NotificationManager {
+export class NotificationManager implements SessionNotifier {
   private client: OpencodeClient | null = null
 
   init(client: OpencodeClient): void {
