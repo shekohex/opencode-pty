@@ -1,5 +1,6 @@
 import { createV2Adapter } from '../adapters/v2/index.ts'
 import { installHostAdapter } from '../adapters/index.ts'
+import { PTYServer } from '../web/server/server.ts'
 import { getOrCreateServer, registerV2Commands } from './commands.ts'
 import { define, type PluginContextV2, type PluginV2 } from './types.ts'
 
@@ -24,10 +25,13 @@ export const Plugin: PluginV2 = define({
       })
     }
 
-    if (options?.autostart) {
+    const autostart =
+      options?.autostart !== undefined ? options.autostart : PTYServer.isAutostartEnabled()
+
+    if (autostart) {
       await getOrCreateServer({
-        port: options.port,
-        hostname: options.hostname,
+        port: options?.port,
+        hostname: options?.hostname,
       })
     }
   },

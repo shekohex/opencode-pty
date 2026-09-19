@@ -5,25 +5,9 @@ import type { CommandDraft, OpencodePtyOptions } from './types.ts'
 export const PTY_OPEN_CLIENT_COMMAND = 'pty-open-background-spy'
 export const PTY_SHOW_SERVER_URL_COMMAND = 'pty-show-server-url'
 
-let activeServer: PTYServer | null = null
-
-export async function getOrCreateServer(options?: ServerOptions): Promise<PTYServer> {
-  if (!activeServer) {
-    activeServer = await PTYServer.createServer(options)
-  }
-  return activeServer
-}
-
-export function getActiveServer(): PTYServer | null {
-  return activeServer
-}
-
-export function stopActiveServer(): void {
-  if (activeServer) {
-    activeServer[Symbol.dispose]()
-    activeServer = null
-  }
-}
+export const getOrCreateServer = PTYServer.getOrCreateServer
+export const getActiveServer = PTYServer.getActiveServer
+export const stopActiveServer = PTYServer.stopActiveServer
 
 export async function handleOpenClientCommand(options?: ServerOptions): Promise<string> {
   const server = await getOrCreateServer(options)

@@ -91,6 +91,68 @@ describe('OpenCode V2 Plugin API', () => {
       expect(active?.server.url.hostname).toBe('127.0.0.1')
     })
 
+    it('autostarts server when PTY_WEB_AUTOSTART is set in env and option is undefined', async () => {
+      expect(getActiveServer()).toBeNull()
+      process.env.PTY_WEB_AUTOSTART = 'true'
+
+      try {
+        const ctx: PluginContextV2 = {
+          options: {
+            hostname: '127.0.0.1',
+          },
+        }
+
+        await Plugin.setup(ctx)
+
+        const active = getActiveServer()
+        expect(active).not.toBeNull()
+        expect(active?.server.url.hostname).toBe('127.0.0.1')
+      } finally {
+        delete process.env.PTY_WEB_AUTOSTART
+      }
+    })
+
+    it('autostarts server when PTY_AUTOSTART alias is set to 1 in env', async () => {
+      expect(getActiveServer()).toBeNull()
+      process.env.PTY_AUTOSTART = '1'
+
+      try {
+        const ctx: PluginContextV2 = {
+          options: {
+            hostname: '127.0.0.1',
+          },
+        }
+
+        await Plugin.setup(ctx)
+
+        const active = getActiveServer()
+        expect(active).not.toBeNull()
+      } finally {
+        delete process.env.PTY_AUTOSTART
+      }
+    })
+
+    it('does not autostart when autostart option is explicitly false even if env is set', async () => {
+      expect(getActiveServer()).toBeNull()
+      process.env.PTY_WEB_AUTOSTART = 'true'
+
+      try {
+        const ctx: PluginContextV2 = {
+          options: {
+            autostart: false,
+            hostname: '127.0.0.1',
+          },
+        }
+
+        await Plugin.setup(ctx)
+
+        const active = getActiveServer()
+        expect(active).toBeNull()
+      } finally {
+        delete process.env.PTY_WEB_AUTOSTART
+      }
+    })
+
     it('shows server URL via handleShowServerUrlCommand', async () => {
       const message = await handleShowServerUrlCommand({ hostname: '127.0.0.1' })
       expect(message).toContain('PTY Sessions Web Interface URL: http://127.0.0.1:')

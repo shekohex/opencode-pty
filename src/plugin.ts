@@ -17,13 +17,17 @@ export const PTYPlugin = async (context: PluginContext): Promise<PluginResult> =
   installHostAdapter(adapter)
   let ptyServer: PTYServer | undefined
 
+  if (PTYServer.isAutostartEnabled()) {
+    ptyServer = await PTYServer.getOrCreateServer()
+  }
+
   return {
     'command.execute.before': async (input) => {
       if (input.command !== ptyOpenClientCommand && input.command !== ptyShowServerUrlCommand) {
         return
       }
       if (ptyServer === undefined) {
-        ptyServer = await PTYServer.createServer()
+        ptyServer = await PTYServer.getOrCreateServer()
       }
       if (input.command === ptyOpenClientCommand) {
         open(ptyServer.server.url.origin)
