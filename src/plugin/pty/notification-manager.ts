@@ -21,17 +21,19 @@ export class NotificationManager implements SessionNotifier {
         model?: { providerID: string; modelID: string }
         variant?: string
       } = {}
+      let currentAgent: string | undefined
       try {
         const parent = await this.client.session.get({
           path: { id: session.parentSessionId },
         })
-        const model = (
-          parent.data as
-            | (typeof parent.data & {
-                model?: { id: string; providerID: string; variant?: string }
-              })
-            | undefined
-        )?.model
+        const info = parent.data as
+          | (typeof parent.data & {
+              agent?: string
+              model?: { id: string; providerID: string; variant?: string }
+            })
+          | undefined
+        currentAgent = info?.agent
+        const model = info?.model
         if (model) {
           modelContext = {
             model: { providerID: model.providerID, modelID: model.id },
@@ -39,13 +41,16 @@ export class NotificationManager implements SessionNotifier {
           }
         }
       } catch {
-        // Older OpenCode versions may not expose the session model.
+        // Older OpenCode versions may not expose the session agent or model.
       }
+      // Prefer the parent session's current agent over the spawn-time snapshot
+      // so an exit notification can't flip the session back to a stale agent.
+      const agent = currentAgent ?? session.parentAgent
       await this.client.session.promptAsync({
         path: { id: session.parentSessionId },
         body: {
           parts: [{ type: 'text', text: message }],
-          ...(session.parentAgent ? { agent: session.parentAgent } : {}),
+          ...(agent ? { agent } : {}),
           ...modelContext,
         },
       })
