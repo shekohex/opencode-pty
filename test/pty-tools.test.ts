@@ -2,8 +2,10 @@ import { describe, it, expect, beforeEach, mock, spyOn, afterAll } from 'bun:tes
 import { ptySpawn } from '../src/plugin/pty/tools/spawn.ts'
 import { ptyRead } from '../src/plugin/pty/tools/read.ts'
 import { ptyList } from '../src/plugin/pty/tools/list.ts'
+import { ptyWait } from '../src/plugin/pty/tools/wait.ts'
 import { RingBuffer } from '../src/plugin/pty/buffer.ts'
-import { manager } from '../src/plugin/pty/manager.ts'
+import { manager, sessionUpdateCallbacks } from '../src/plugin/pty/manager.ts'
+import type { PTYSessionInfo } from '../src/plugin/pty/types.ts'
 
 describe('PTY Tools', () => {
   afterAll(() => {
@@ -346,6 +348,146 @@ describe('PTY Tools', () => {
       )
 
       expect(result).toBe('<pty_list>\nNo active PTY sessions.\n</pty_list>')
+    })
+  })
+
+  describe('ptyWait', () => {
+    function makeSession(overrides: Partial<PTYSessionInfo> = {}): PTYSessionInfo {
+      return {
+        id: 'test-session-id',
+        title: 'Test Session',
+        description: 'A session for testing',
+        command: 'echo',
+        args: ['hello'],
+        workdir: '/tmp',
+        status: 'exited',
+        notifyOnExit: false,
+        timeoutSeconds: undefined,
+        timedOut: false,
+        exitCode: 0,
+        pid: 12345,
+        createdAt: new Date().toISOString(),
+        lineCount: 2,
+        ...overrides,
+      } as PTYSessionInfo
+    }
+
+    const ctx = {
+      sessionID: 'parent',
+      messageID: 'msg',
+      agent: 'agent',
+      abort: new AbortController().signal,
+      metadata: () => {},
+      ask: async () => {},
+      directory: '/tmp',
+      worktree: '/tmp',
+    }
+
+    beforeEach(() => {
+      expect(sessionUpdateCallbacks).toHaveLength(0)
+    })
+
+    it('returns a complete <pty_waited> block for an exited session', async () => {
+      spyOn(manager, 'get').mockReturnValue(makeSession())
+      spyOn(manager, 'read').mockReturnValue({
+        lines: ['build succeeded', 'server started'],
+        offset: 0,
+        hasMore: false,
+        totalLines: 2,
+      })
+
+      const result = await ptyWait.execute({ id: 'test-session-id' }, ctx)
+
+      expect(result).toContain('<pty_waited>')
+      expect(result).toContain('ID: test-session-id')
+      expect(result).toContain('Title: Test Session')
+      expect(result).toContain('Command: echo hello')
+      expect(result).toContain('Status: exited')
+      expect(result).toContain('Exit: 0')
+      expect(result).toContain('Output Lines: 2')
+      expect(result).toContain('</pty_waited>')
+      expect(sessionUpdateCallbacks).toHaveLength(0)
+    })
+
+    it('includes a tail of the last 20 buffer lines', async () => {
+      spyOn(manager, 'get').mockReturnValue(makeSession({ lineCount: 25 }))
+      spyOn(manager, 'read').mockReturnValue({
+        lines: ['line 6', 'line 7', 'line 8'],
+        offset: 5,
+        hasMore: false,
+        totalLines: 25,
+      })
+
+      const result = await ptyWait.execute({ id: 'test-session-id' }, ctx)
+
+      expect(manager.read).toHaveBeenCalledWith('test-session-id', 5, 20)
+      expect(result).toContain('00006| line 6')
+      expect(result).toContain('00007| line 7')
+      expect(sessionUpdateCallbacks).toHaveLength(0)
+    })
+
+    it('waits for a running session until it exits', async () => {
+      spyOn(manager, 'get').mockReturnValue(makeSession({ status: 'running', exitCode: undefined }))
+      spyOn(manager, 'read').mockReturnValue({
+        lines: [],
+        offset: 0,
+        hasMore: false,
+        totalLines: 0,
+      })
+
+      const pending = ptyWait.execute({ id: 'test-session-id' }, ctx)
+      expect(sessionUpdateCallbacks).toHaveLength(1)
+
+      const callback = sessionUpdateCallbacks[0]
+      if (!callback) {
+        throw new Error('ptyWait did not register a session update callback')
+      }
+      callback(makeSession())
+
+      const result = await pending
+
+      expect(result).toContain('Status: exited')
+      expect(result).toContain('Exit: 0')
+      expect(result).toContain('</pty_waited>')
+      expect(sessionUpdateCallbacks).toHaveLength(0)
+    })
+
+    it('returns <pty_wait_timeout> when the session stays running past timeoutSeconds', async () => {
+      spyOn(manager, 'get').mockReturnValue(makeSession({ status: 'running', exitCode: undefined }))
+
+      const result = await ptyWait.execute({ id: 'test-session-id', timeoutSeconds: 0.05 }, ctx)
+
+      expect(result).toContain('<pty_wait_timeout>')
+      expect(result).toContain('still running after 0.05s')
+      expect(result).toContain('</pty_wait_timeout>')
+      expect(sessionUpdateCallbacks).toHaveLength(0)
+    })
+
+    it('reports the exit signal when no exit code is present', async () => {
+      spyOn(manager, 'get').mockReturnValue(
+        makeSession({ exitCode: undefined, exitSignal: 15, lineCount: 0 })
+      )
+      spyOn(manager, 'read').mockReturnValue({
+        lines: [],
+        offset: 0,
+        hasMore: false,
+        totalLines: 0,
+      })
+
+      const result = await ptyWait.execute({ id: 'test-session-id' }, ctx)
+
+      expect(result).toContain('Exit: unknown, signal: 15')
+      expect(result).not.toContain('Tail:')
+      expect(sessionUpdateCallbacks).toHaveLength(0)
+    })
+
+    it('throws when the session does not exist', async () => {
+      spyOn(manager, 'get').mockReturnValue(null)
+
+      expect(ptyWait.execute({ id: 'missing-session' }, ctx)).rejects.toThrow(
+        "PTY session 'missing-session' not found"
+      )
+      expect(sessionUpdateCallbacks).toHaveLength(0)
     })
   })
 
