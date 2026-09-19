@@ -1,0 +1,52 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits"],
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "groupName": "opencode-ai",
+      "matchPackageNames": ["@opencode-ai/plugin", "@opencode-ai/sdk"]
+    },
+    {
+      "groupName": "vite",
+      "matchPackageNames": ["vite", "@vitejs/plugin-react"]
+    },
+    {
+      "groupName": "test tooling",
+      "matchPackageNames": [
+        "@playwright/test",
+        "playwright-core",
+        "happy-dom",
+        "jsdom",
+        "@types/jsdom"
+      ]
+    },
+    {
+      "groupName": "lint and formatting",
+      "matchPackageNames": ["@biomejs/biome"]
+    },
+    {
+      "groupName": "type definitions",
+      "matchPackageNames": ["@types/bun", "@types/react", "@types/react-dom", "@types/jsdom"]
+    },
+    {
+      "groupName": "GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true
+    },
+    {
+      "groupName": "dev dependencies (non-major)",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["major"]
+    }
+  ]
+}

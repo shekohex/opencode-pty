@@ -49,7 +49,7 @@ export class SessionLifecycleManager {
       this.sessionTimeouts.delete(session.id)
 
       const currentSession = this.sessions.get(session.id)
-      if (!currentSession || currentSession.status !== 'running') {
+      if (currentSession?.status !== 'running') {
         return
       }
 

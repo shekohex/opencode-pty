@@ -117,7 +117,7 @@ export function App() {
                 rawOutput={rawOutput}
                 onSendInput={handleSendInput}
                 onInterrupt={handleKillSession}
-                disabled={!activeSession || activeSession.status !== 'running'}
+                disabled={activeSession?.status !== 'running'}
               />
             </div>
             <div className="debug-info" data-testid="debug-info">

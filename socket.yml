@@ -1,0 +1,26 @@
+# Socket for GitHub configuration.
+#
+# The committed file is inert on its own: the Socket for GitHub app must be
+# installed on this repository before it takes effect (see
+# https://docs.socket.dev/docs/socket-yml).
+version: 2
+
+# Only evaluate pull requests that touch dependency manifests or lockfiles.
+triggerPaths:
+  - "package.json"
+  - "bun.lock"
+
+# Keep test fixtures out of dependency ingestion.
+projectIgnorePaths:
+  - "test/e2e/fixtures"
+
+issueRules:
+  unresolvedRequire: true
+  telemetry: true
+  hasNativeCode: true
+  gitDependency: true
+  httpDependency: true
+
+githubApp:
+  enabled: true
+  dependencyOverviewEnabled: true
