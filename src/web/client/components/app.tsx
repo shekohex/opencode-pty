@@ -17,6 +17,11 @@ export function App() {
   const [wsMessageCount, setWsMessageCount] = useState(0)
   const [sessionUpdateCount, setSessionUpdateCount] = useState(0)
 
+  const handleSessionRemoved = useCallback((sessionId: string) => {
+    setSessions((prevSessions) => prevSessions.filter((session) => session.id !== sessionId))
+    setActiveSession((current) => (current?.id === sessionId ? null : current))
+  }, [])
+
   const {
     connected: wsConnected,
     subscribeWithRetry,
@@ -63,6 +68,7 @@ export function App() {
         }
       })
     }, []),
+    onSessionRemoved: handleSessionRemoved,
   })
 
   // Update connected from wsConnected
@@ -83,7 +89,14 @@ export function App() {
     return () => clearInterval(syncInterval)
   }, [])
 
-  const { handleSessionClick, handleSendInput, handleKillSession } = useSessionManager({
+  const {
+    handleSessionClick,
+    handleSendInput,
+    handleKillSession,
+    handleKillSessionById,
+    handleRemoveSession,
+    handleClearFinished,
+  } = useSessionManager({
     activeSession,
     setActiveSession,
     subscribeWithRetry,
@@ -94,12 +107,57 @@ export function App() {
     }, []),
   })
 
+  const removeSessionFromList = handleSessionRemoved
+
+  const handleRemoveSessionClick = useCallback(
+    async (session: PTYSessionInfo) => {
+      const removed = await handleRemoveSession(session)
+      if (removed) {
+        removeSessionFromList(session.id)
+      }
+    },
+    [handleRemoveSession, removeSessionFromList]
+  )
+
+  const handleClearFinishedClick = useCallback(async () => {
+    const finishedSessions = sessions.filter(
+      (session) => session.status !== 'running' && session.status !== 'killing'
+    )
+    const cleared = await handleClearFinished(finishedSessions)
+    if (cleared) {
+      setSessions((prevSessions) =>
+        prevSessions.filter(
+          (session) => session.status === 'running' || session.status === 'killing'
+        )
+      )
+      setActiveSession((current) =>
+        current && (current.status === 'running' || current.status === 'killing') ? current : null
+      )
+    }
+  }, [sessions, handleClearFinished])
+
+  const handleDownloadSession = useCallback(() => {
+    if (!activeSession) {
+      return
+    }
+    const blob = new Blob([rawOutput], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `${activeSession.id}.log`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }, [activeSession, rawOutput])
+
   return (
     <div className="container" data-active-session={activeSession?.id}>
       <Sidebar
         sessions={sessions}
         activeSession={activeSession}
         onSessionClick={handleSessionClick}
+        onKillSession={handleKillSessionById}
+        onRemoveSession={handleRemoveSessionClick}
+        onClearFinished={handleClearFinishedClick}
         connected={connected}
       />
       <div className="main">
@@ -107,9 +165,29 @@ export function App() {
           <>
             <div className="output-header">
               <div className="output-title">{activeSession.description ?? activeSession.title}</div>
-              <button type="button" className="kill-btn" onClick={handleKillSession}>
-                Kill Session
-              </button>
+              <div className="output-actions">
+                <button
+                  type="button"
+                  className="download-btn"
+                  onClick={handleDownloadSession}
+                  disabled={rawOutput.length === 0}
+                >
+                  Download
+                </button>
+                {activeSession.status === 'running' ? (
+                  <button type="button" className="kill-btn" onClick={handleKillSession}>
+                    Kill Session
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="remove-btn"
+                    onClick={() => handleRemoveSessionClick(activeSession)}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
             <div className="output-container">
               <RawTerminal

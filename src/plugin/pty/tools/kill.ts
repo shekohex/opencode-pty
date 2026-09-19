@@ -10,7 +10,9 @@ export const ptyKill = tool({
     cleanup: tool.schema
       .boolean()
       .optional()
-      .describe('If true, removes the session and frees the buffer (default: false)'),
+      .describe(
+        'Deprecated: removing sessions is intended for humans via the web UI. If true, removes the session and frees the buffer (default: false)'
+      ),
   },
   async execute(args) {
     const session = manager.get(args.id)
