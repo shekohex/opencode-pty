@@ -64,7 +64,7 @@ OpenCode V2 uses the new plugin API. You can load `opencode-pty/v2` and optional
 | --- | --- | --- | --- |
 | `port` | `number` | `0` (ephemeral) | Fixed port for the PTY Web UI observer server |
 | `hostname` | `string` | `"::1"` | Hostname to bind the PTY Web UI server to |
-| `autostart` | `boolean` | `false` | Automatically start the Web UI server on startup |
+| `autostart` | `boolean` | `false` | Automatically start the Web UI server on startup (can also be enabled via `PTY_WEB_AUTOSTART=true`) |
 
 OpenCode will automatically install the plugin on next run.
 
@@ -259,9 +259,10 @@ This eliminates the need for polling—perfect for long-running processes like b
 
 | Variable               | Default    | Description                                        |
 | ---------------------- | ---------- | -------------------------------------------------- |
-| `PTY_MAX_BUFFER_LINES` | `50000`    | Maximum lines to keep in output buffer per session |
-| `PTY_WEB_HOSTNAME`     | `::1`      | Hostname for the web server to bind to (IPv6 loopback by default) |
-| `PTY_WEB_PORT`         | `0` (random) | Port for the web server (0 = random port)        |
+| `PTY_MAX_BUFFER_LINES` | `50000`       | Maximum lines to keep in output buffer per session                 |
+| `PTY_WEB_HOSTNAME`     | `::1`         | Hostname for the web server to bind to (IPv6 loopback by default)   |
+| `PTY_WEB_PORT`         | `0` (random)  | Port for the web server (0 = random port)                          |
+| `PTY_WEB_AUTOSTART`    | `false`       | Automatically start the Web UI server on OpenCode startup          |
 
 ### Permissions
 

@@ -28,6 +28,8 @@ export class PTYServer implements Disposable {
   private readonly stack = new DisposableStack()
   private readonly options?: ServerOptions
 
+  private static activeServer: PTYServer | null = null
+
   private constructor(staticRoutes: Record<string, Response>, options?: ServerOptions) {
     this.staticRoutes = staticRoutes
     this.options = options
@@ -38,12 +40,41 @@ export class PTYServer implements Disposable {
 
   [Symbol.dispose]() {
     this.stack.dispose()
+    if (PTYServer.activeServer === this) {
+      PTYServer.activeServer = null
+    }
   }
 
   public static async createServer(options?: ServerOptions): Promise<PTYServer> {
     const staticRoutes = await buildStaticRoutes()
 
     return new PTYServer(staticRoutes, options)
+  }
+
+  public static isAutostartEnabled(): boolean {
+    const env = process.env.PTY_WEB_AUTOSTART ?? process.env.PTY_AUTOSTART
+    if (!env) return false
+    const normalized = env.trim().toLowerCase()
+    return (
+      normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'on'
+    )
+  }
+
+  public static async getOrCreateServer(options?: ServerOptions): Promise<PTYServer> {
+    if (!PTYServer.activeServer) {
+      PTYServer.activeServer = await PTYServer.createServer(options)
+    }
+    return PTYServer.activeServer
+  }
+
+  public static getActiveServer(): PTYServer | null {
+    return PTYServer.activeServer
+  }
+
+  public static stopActiveServer(): void {
+    if (PTYServer.activeServer) {
+      PTYServer.activeServer[Symbol.dispose]()
+    }
   }
 
   private startWebServer(): Server<undefined> {
