@@ -46,10 +46,17 @@ export const Plugin: PluginV2 = define({
     }
 
     if (ctx.options?.autostart) {
-      await getOrCreateServer({
-        port: ctx.options.port,
-        hostname: ctx.options.hostname,
-      })
+      try {
+        await getOrCreateServer({
+          port: ctx.options.port,
+          hostname: ctx.options.hostname,
+        })
+      } catch (error) {
+        // Never let web-server startup failure crash plugin setup: the PTY
+        // tools stay fully functional in-process, and getOrCreateServer retries
+        // (now with port fallback) on the next on-demand command invocation.
+        console.warn('[opencode-pty] web server could not be started:', error)
+      }
     }
   },
 })
