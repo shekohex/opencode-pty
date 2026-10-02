@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './index.css'
 import { App } from './components/app.tsx'
 import { ErrorBoundary } from './components/error-boundary.tsx'
 

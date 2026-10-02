@@ -68,6 +68,31 @@ function notifyRawOutput(session: PTYSessionInfo, rawData: string): void {
   }
 }
 
+type SessionRemovedCallback = (sessionId: string) => void
+
+export const sessionRemovedCallbacks: SessionRemovedCallback[] = []
+
+export function registerSessionRemovedCallback(callback: SessionRemovedCallback): void {
+  sessionRemovedCallbacks.push(callback)
+}
+
+export function removeSessionRemovedCallback(callback: SessionRemovedCallback): void {
+  const index = sessionRemovedCallbacks.indexOf(callback)
+  if (index !== -1) {
+    sessionRemovedCallbacks.splice(index, 1)
+  }
+}
+
+function notifySessionRemoved(sessionId: string): void {
+  for (const callback of sessionRemovedCallbacks) {
+    try {
+      callback(sessionId)
+    } catch {
+      // Ignore callback errors
+    }
+  }
+}
+
 class PTYManager {
   private lifecycleManager = new SessionLifecycleManager()
   private outputManager = new OutputManager()
@@ -88,7 +113,11 @@ class PTYManager {
   }
 
   clearAllSessions(): void {
+    const removedIds = this.lifecycleManager.listSessions().map((session) => session.id)
     this.lifecycleManager.clearAllSessions()
+    for (const id of removedIds) {
+      notifySessionRemoved(id)
+    }
   }
 
   spawn(opts: SpawnOptions): PTYSessionInfo {
@@ -162,11 +191,22 @@ class PTYManager {
   }
 
   kill(id: string, cleanup: boolean = false): boolean {
-    return this.lifecycleManager.kill(id, cleanup)
+    const success = this.lifecycleManager.kill(id, cleanup)
+    if (success && cleanup) {
+      notifySessionRemoved(id)
+    }
+    return success
   }
 
   cleanupBySession(parentSessionId: string): void {
+    const removedIds = this.lifecycleManager
+      .listSessions()
+      .filter((session) => session.parentSessionId === parentSessionId)
+      .map((session) => session.id)
     this.lifecycleManager.cleanupBySession(parentSessionId)
+    for (const id of removedIds) {
+      notifySessionRemoved(id)
+    }
   }
 }
 

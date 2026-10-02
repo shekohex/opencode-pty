@@ -269,4 +269,48 @@ extendedTest.describe('App Component', () => {
       expect(count).toBeGreaterThan(0)
     })
   })
+
+  extendedTest.describe('Session Discarding', () => {
+    extendedTest(
+      'removes a finished session from the sidebar (human-only)',
+      async ({ page, api }) => {
+        // Prevent autoselect so the sidebar state stays predictable
+        await page.evaluate(() => {
+          localStorage.setItem('skip-autoselect', 'true')
+        })
+
+        await api.sessions.create({
+          command: 'echo',
+          args: ['finished'],
+          description: 'Finished session to discard',
+        })
+
+        // Wait until the session has actually exited
+        const deadline = Date.now() + 5000
+        while (Date.now() < deadline) {
+          const sessions = await api.sessions.list()
+          const target = sessions.find((s) => s.description === 'Finished session to discard')
+          if (target && target.status !== 'running') {
+            break
+          }
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        }
+
+        await page.reload()
+
+        const sessionRow = page.locator('.session-row:has-text("Finished session to discard")')
+        await expect(sessionRow).toBeVisible({ timeout: 5000 })
+
+        // The confirmation dialog must be accepted for the removal to proceed
+        page.on('dialog', (dialog) => dialog.accept())
+        await sessionRow.locator('.session-action-remove').click()
+
+        // The row disappears immediately via the session_removed broadcast
+        await expect(sessionRow).toHaveCount(0, { timeout: 5000 })
+
+        const remaining = await api.sessions.list()
+        expect(remaining.some((s) => s.description === 'Finished session to discard')).toBe(false)
+      }
+    )
+  })
 })

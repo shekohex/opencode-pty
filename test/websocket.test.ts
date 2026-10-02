@@ -4,6 +4,7 @@ import type {
   CustomError,
   WSMessageServerError,
   WSMessageServerSessionList,
+  WSMessageServerSessionRemoved,
   WSMessageServerSessionUpdate,
   WSMessageServerSubscribedSession,
   WSMessageServerUnsubscribedSession,
@@ -168,6 +169,31 @@ describe('WebSocket Functionality', () => {
       })
 
       await sessionListPromise
+    }, 1000)
+
+    it('should broadcast session_removed when a session is discarded', async () => {
+      await using managedTestClient = await ManagedTestClient.create(
+        managedTestServer.server.getWsUrl()
+      )
+      const session = manager.spawn({
+        command: 'echo',
+        args: ['done'],
+        description: 'Session to discard',
+        parentSessionId: managedTestServer.sessionId,
+      })
+
+      const removedPromise = new Promise<WSMessageServerSessionRemoved>((res) => {
+        managedTestClient.sessionRemovedCallbacks.push((message) => {
+          if (message.sessionId === session.id) {
+            res(message)
+          }
+        })
+      })
+
+      manager.kill(session.id, true)
+
+      const removed = await removedPromise
+      expect(removed.sessionId).toBe(session.id)
     }, 1000)
 
     it('should handle invalid message format', async () => {

@@ -60,6 +60,7 @@ export interface WSMessageServer {
     | 'readRawResponse'
     | 'session_list'
     | 'session_update'
+    | 'session_removed'
     | 'error'
 }
 
@@ -93,6 +94,15 @@ export interface WSMessageServerSessionList extends WSMessageServer {
 export interface WSMessageServerSessionUpdate extends WSMessageServer {
   type: 'session_update'
   session: PTYSessionInfo
+}
+
+/**
+ * Emitted when a session is permanently removed (buffer freed and dropped from
+ * the manager), e.g. when a human discards a finished session in the web UI.
+ */
+export interface WSMessageServerSessionRemoved extends WSMessageServer {
+  type: 'session_removed'
+  sessionId: string
 }
 
 export interface WSMessageServerError extends WSMessageServer {

@@ -238,6 +238,50 @@ describe('Web Server', () => {
       await sessionExitedPromise
     }, 1000)
 
+    it('should retain a killed session when no cleanup is requested', async () => {
+      const session = manager.spawn({
+        command: 'cat',
+        args: [],
+        description: 'Retained after kill',
+        parentSessionId: 'test',
+      })
+
+      const response = await fetch(
+        `${managedTestServer.server.server.url}/api/sessions/${session.id}`,
+        { method: 'DELETE' }
+      )
+      expect(response.status).toBe(200)
+
+      const listResponse = await fetch(`${managedTestServer.server.server.url}/api/sessions`)
+      const sessions = (await listResponse.json()) as PTYSessionInfo[]
+      expect(sessions.some((s) => s.id === session.id)).toBe(true)
+    }, 1000)
+
+    it('should discard a session via the cleanup endpoint', async () => {
+      const session = manager.spawn({
+        command: 'cat',
+        args: [],
+        description: 'Discarded session',
+        parentSessionId: 'test',
+      })
+
+      const response = await fetch(
+        `${managedTestServer.server.server.url}/api/sessions/${session.id}/cleanup`,
+        { method: 'DELETE' }
+      )
+      expect(response.status).toBe(200)
+      expect((await response.json()).success).toBe(true)
+
+      const listResponse = await fetch(`${managedTestServer.server.server.url}/api/sessions`)
+      const sessions = (await listResponse.json()) as PTYSessionInfo[]
+      expect(sessions.some((s) => s.id === session.id)).toBe(false)
+
+      const getResponse = await fetch(
+        `${managedTestServer.server.server.url}/api/sessions/${session.id}`
+      )
+      expect(getResponse.status).toBe(404)
+    }, 1000)
+
     it('should return session output', async () => {
       const title = crypto.randomUUID()
       const sessionExitedPromise = new Promise<PTYSessionInfo>((resolve) => {
