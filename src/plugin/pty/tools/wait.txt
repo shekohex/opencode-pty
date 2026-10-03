@@ -1,0 +1,17 @@
+Waits for a PTY session to finish running and returns once it has completed.
+
+Use this tool when you cannot go idle and wait for the `<pty_exited>` completion message, e.g., when
+- Used with a `/goal` plugin which automatically resumes idle agents
+- Used by a subagent whose parent interprets idleness as task completion
+
+Usage:
+- `id`: The PTY session ID (from `pty_spawn` or `pty_list`)
+- `timeoutSeconds`: Optional. Maximum time to wait in seconds. If the session is still running after this, returns a `<pty_wait_timeout>` result instead of blocking forever. Default: no limit.
+
+Returns `<pty_waited>` block with the final status, exit code, and the last 20
+lines of output (tail). If the session already exited, returns immediately.
+
+Tips:
+- Combine with `pty_spawn` (with or without notifyOnExit) to run a command and wait.
+- After a timeout result, call `pty_read` for live output, `pty_kill` to stop the session, or call `pty_wait` again with a longer timeout.
+- Prefer this over sleep plus `pty_read` polling loops.
