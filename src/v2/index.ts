@@ -34,18 +34,19 @@ export const Plugin: PluginV2 = define({
     const adapter = createV2Adapter({ notifier })
     installHostAdapter(adapter)
 
-    if (ctx.tool && typeof ctx.tool.transform === 'function') {
-      await ctx.tool.transform((draft) => {
-        registerV2Tools(draft)
-      })
-    }
-
     // The project directory lives on `location`. `ctx.worktree` is deliberately
     // NOT used: it is a domain object on the V2 API, not a path, and passing it
     // through reached createHash and threw. Absent paths only mean no record is
     // published — the sidebar then falls back to the instance-scoped URL scrape.
     const location = (ctx as unknown as { location?: { directory?: unknown } }).location
     const directory = typeof location?.directory === 'string' ? location.directory : undefined
+
+    if (ctx.tool && typeof ctx.tool.transform === 'function') {
+      await ctx.tool.transform((draft) => {
+        registerV2Tools(draft, directory)
+      })
+    }
+
     const serverOptions: ServerOptions = {
       port: ctx.options?.port,
       hostname: ctx.options?.hostname,

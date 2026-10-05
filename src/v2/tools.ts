@@ -31,7 +31,7 @@ type V1ToolDefinition = {
  *   - `args` (Zod raw shape) -> `input`: JSON Schema (Zod v4 `toJSONSchema`)
  *   - string result -> `{ content }`
  */
-export function registerV2Tools(draft: ToolDraft): void {
+export function registerV2Tools(draft: ToolDraft, directory?: string): void {
   if (typeof draft.add !== 'function') {
     return
   }
@@ -44,7 +44,8 @@ export function registerV2Tools(draft: ToolDraft): void {
       description: definition.description,
       input: tool.schema.toJSONSchema(tool.schema.object(definition.args)),
       execute: async (input, context) => {
-        const result = await definition.execute(input as never, context as never)
+        const ctx = { directory, ...(context as object) }
+        const result = await definition.execute(input as never, ctx as never)
         return typeof result === 'string' ? { content: result } : result
       },
     }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { afterEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import {
   PTY_OPEN_CLIENT_COMMAND,
   PTY_SHOW_SERVER_URL_COMMAND,
@@ -7,6 +7,7 @@ import {
   getOrCreateServer,
   handleShowServerUrlCommand,
   ptyTools,
+  registerV2Tools,
   stopActiveServer,
 } from '../src/v2/index.ts'
 import type {
@@ -20,6 +21,7 @@ import type {
 describe('OpenCode V2 Plugin API', () => {
   afterEach(() => {
     stopActiveServer()
+    mock.restore()
   })
 
   describe('Plugin Contract Conformance', () => {
@@ -75,6 +77,24 @@ describe('OpenCode V2 Plugin API', () => {
         expect(tool.input).toBeDefined()
         expect(typeof tool.execute).toBe('function')
       }
+    })
+
+    it('injects the project directory into a tool context without directory', async () => {
+      const registeredTools: Record<string, ToolInfoV2> = {}
+      const draft: ToolDraft = {
+        add: (tool) => {
+          registeredTools[tool.name] = tool
+        },
+      }
+      const execute = spyOn(ptyTools.pty_spawn, 'execute').mockResolvedValue('spawned')
+      const input = { command: 'pwd', args: [], description: 'Check project directory' }
+      const context = { sessionID: 'session-1', progress: async () => {} }
+
+      registerV2Tools(draft, '/tmp/project')
+      const result = await registeredTools.pty_spawn?.execute(input, context)
+
+      expect(execute).toHaveBeenCalledWith(input, { directory: '/tmp/project', ...context })
+      expect(result).toEqual({ content: 'spawned' })
     })
 
     it('does not fail when the tool transform is unavailable', async () => {

@@ -1,15 +1,20 @@
-import { describe, it, expect, beforeEach, mock, spyOn, afterAll } from 'bun:test'
+import { describe, it, expect, beforeEach, mock, spyOn, afterAll, afterEach } from 'bun:test'
 import { ptySpawn } from '../src/plugin/pty/tools/spawn.ts'
 import { ptyRead } from '../src/plugin/pty/tools/read.ts'
 import { ptyList } from '../src/plugin/pty/tools/list.ts'
 import { RingBuffer } from '../src/plugin/pty/buffer.ts'
 import { manager } from '../src/plugin/pty/manager.ts'
+import { setPermissionAuthorizer } from '../src/plugin/pty/permissions.ts'
 
 describe('PTY Tools', () => {
   afterAll(() => {
     mock.restore()
   })
   describe('ptySpawn', () => {
+    afterEach(() => {
+      setPermissionAuthorizer(null)
+    })
+
     beforeEach(() => {
       spyOn(manager, 'spawn').mockImplementation((opts) => ({
         id: 'test-session-id',
@@ -52,7 +57,7 @@ describe('PTY Tools', () => {
         description: 'Test session',
         parentSessionId: 'parent-session-id',
         parentAgent: 'test-agent',
-        workdir: undefined,
+        workdir: '/tmp',
         env: undefined,
         title: undefined,
         notifyOnExit: undefined,
@@ -66,6 +71,37 @@ describe('PTY Tools', () => {
       expect(result).toContain('TimeoutSeconds: none')
       expect(result).toContain('</pty_spawned>')
       expect(result).not.toContain('<system_reminder>')
+    })
+
+    it('resolves relative workdir against the project before checking permission and spawning', async () => {
+      const checkWorkdir = mock(async () => {})
+      setPermissionAuthorizer({ checkCommand: async () => {}, checkWorkdir })
+      const ctx = {
+        sessionID: 'parent-session-id',
+        messageID: 'msg-relative',
+        agent: 'test-agent',
+        abort: new AbortController().signal,
+        metadata: () => {},
+        ask: async () => {},
+        directory: '/tmp/project',
+        worktree: '/tmp/project',
+      }
+
+      const result = await ptySpawn.execute(
+        {
+          command: 'pwd',
+          args: [],
+          description: 'Check project source directory',
+          workdir: 'src',
+        },
+        ctx
+      )
+
+      expect(checkWorkdir).toHaveBeenCalledWith('/tmp/project/src')
+      expect(manager.spawn).toHaveBeenCalledWith(
+        expect.objectContaining({ workdir: '/tmp/project/src' })
+      )
+      expect(result).toContain('Workdir: /tmp/project/src')
     })
 
     it('should spawn with all optional args', async () => {
