@@ -16,8 +16,8 @@
 // effects, not rendering.
 // =============================================================================
 
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { afterEach, beforeEach, describe, expect, jest, mock, test } from 'bun:test'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { writeOrigin } from '../src/shared/runtime.ts'
@@ -273,6 +273,46 @@ describe('pty sidebar tui factory', () => {
       expect(calls.serverStarts).toBe(0)
     } finally {
       disposeNow()
+    }
+  })
+
+  test('does not adopt a healthy origin published by another process for the same project', async () => {
+    let sessionRequests = 0
+    const listener = Bun.serve({
+      hostname: '::1',
+      port: 0,
+      fetch: (req) => {
+        if (new URL(req.url).pathname === '/api/sessions') {
+          sessionRequests++
+          return Response.json([])
+        }
+        return Response.json({ status: 'healthy', sessions: { total: 0, active: 0 } })
+      },
+    })
+    writeFileSync(
+      join(runtimeDir, 'foreign.json'),
+      JSON.stringify({
+        pid: process.pid + 1,
+        hostname: '::1',
+        port: listener.port,
+        directory: PROJECT,
+      })
+    )
+    const realFetch = globalThis.fetch
+    const { api, sidebar, disposeNow } = stubApi()
+    jest.useFakeTimers()
+    try {
+      // Dispatch in-process so discovery settles on microtasks, not network timing.
+      globalThis.fetch = (async (input) => listener.fetch(String(input))) as typeof fetch
+      await plugin.tui(api as never)
+      while (textNodesOf(sidebar()).includes('▶ PTY  starting…')) await Promise.resolve()
+      expect(sessionRequests).toBe(0)
+      expect(textNodesOf(sidebar())).toContain('▶ PTY  not running — click to start')
+    } finally {
+      globalThis.fetch = realFetch
+      listener.stop(true)
+      disposeNow()
+      jest.useRealTimers()
     }
   })
 

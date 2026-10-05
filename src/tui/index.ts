@@ -257,12 +257,13 @@ async function isHealthy(origin: string): Promise<boolean> {
 }
 
 /**
- * Origins this project's running servers have published, confirmed healthy.
+ * Origins this process published for the project, confirmed healthy.
+ *
+ * Worker threads share process.pid; an attached TUI needs the instance-scoped scrape.
  *
  * A record is only a hint about where to look: `/health` decides whether
  * anything is actually serving there. That also covers a server that died
- * without cleaning up (its record is pruned by the reader) and an unrelated
- * service squatting the port.
+ * without cleaning up and an unrelated service squatting the port.
  */
 async function healthyRuntimeOrigins(api: TuiPluginApi): Promise<string[]> {
   let directory: string | undefined
@@ -275,6 +276,7 @@ async function healthyRuntimeOrigins(api: TuiPluginApi): Promise<string[]> {
   }
   const healthy: string[] = []
   for (const record of originsForProject(directory, worktree)) {
+    if (record.pid !== process.pid) continue
     for (const origin of candidateOrigins(record)) {
       if (await isHealthy(origin)) {
         healthy.push(origin)
@@ -359,8 +361,8 @@ async function bootstrapOrigin(api: TuiPluginApi): Promise<string | null> {
  * Resolve the PTY server origin, cheapest and quietest first:
  *
  *  1. cached, while it still answers
- *  2. an origin record this project published, confirmed by `/health` — the
- *     common case, and it costs no session
+ *  2. an origin record this process published for this project, confirmed by
+ *     `/health` — the same-process case, and it costs no session
  *  3. the instance-scoped scrape through a throwaway session — when nothing is
  *     advertised (starting one, if asked) or when several records match and only
  *     the caller's own opencode server can say which is ours
