@@ -114,8 +114,9 @@ describe('Web Server Integration', () => {
         }
       )
 
+      expect(response.status).toBe(400)
       const result = await response.json()
-      expect(result).toHaveProperty('success')
+      expect(result).toEqual({ error: 'Failed to write to session' })
 
       const errorPromise = new Promise((resolve) => {
         managedTestClient.errorCallbacks.push((message) => {

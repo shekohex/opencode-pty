@@ -2,11 +2,12 @@ import type { PTYSession, ReadResult, SearchResult } from './types.ts'
 
 export class OutputManager {
   write(session: PTYSession, data: string): boolean {
+    if (session.status !== 'running' || !session.process) return false
     try {
-      session.process?.write(data)
+      session.process.write(data)
       return true
     } catch {
-      return true // allow write to exited process for tests
+      return false
     }
   }
 
