@@ -389,15 +389,36 @@ describe('PTY Tools', () => {
       expect(buffer.readRaw()).toBe('')
     })
 
-    it('should truncate buffer at byte level when exceeding max', () => {
+    it('should discard whole lines when exceeding the character limit', () => {
       const buffer = new RingBuffer(10) // Small buffer for testing
       buffer.append('line1\nline2\nline3\nline4')
 
-      // Input is 'line1\nline2\nline3\nline4' (23 chars)
-      // With buffer size 10, keeps last 10 chars: 'ine3\nline4'
-      expect(buffer.readRaw()).toBe('ine3\nline4')
-      expect(buffer.read()).toEqual(['ine3', 'line4'])
-      expect(buffer.length).toBe(2)
+      expect(buffer.readRaw()).toBe('line4')
+      expect(buffer.read()).toEqual(['line4'])
+      expect(buffer.length).toBe(1)
+    })
+
+    it('should keep the tail of the newest line when it alone exceeds the character limit', () => {
+      const buffer = new RingBuffer(10)
+      buffer.append(`${'x'.repeat(15)}\n`)
+
+      expect(buffer.read()).toEqual(['x'.repeat(9)])
+    })
+
+    it('should retain the last three whole lines at the line limit', () => {
+      const buffer = new RingBuffer(100, 3)
+      buffer.append('line1\nline2\nline3\nline4\nline5\n')
+
+      expect(buffer.read()).toEqual(['line3', 'line4', 'line5'])
+      expect(buffer.readRaw()).toBe('line3\nline4\nline5\n')
+      expect(buffer.length).toBe(3)
+    })
+
+    it('should count UTF-8 bytes for non-ASCII output', () => {
+      const buffer = new RingBuffer()
+      buffer.append('á😀')
+
+      expect(buffer.byteLength).toBe(6)
     })
   })
 })

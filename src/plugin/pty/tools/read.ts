@@ -127,7 +127,7 @@ function handlePatternRead(
     formatLine(match.text, match.lineNumber, MAX_LINE_LENGTH)
   )
 
-  const paginationMessage = `(${result.matches.length} of ${result.totalMatches} matches shown. Use offset=${offset + result.matches.length} to see more.)`
+  const paginationMessage = `(${result.matches.length} of ${result.totalMatches} matches shown. Use offset=${result.offset + result.matches.length} to see more.)`
   const endMessage = `(${result.totalMatches} match${result.totalMatches === 1 ? '' : 'es'} from ${result.totalLines} total lines)`
 
   return appendSessionReminders(

@@ -292,8 +292,11 @@ This eliminates the need for polling—perfect for long-running processes like b
 | Variable               | Default    | Description                                        |
 | ---------------------- | ---------- | -------------------------------------------------- |
 | `PTY_MAX_BUFFER_LINES` | `50000`    | Maximum lines to keep in output buffer per session |
+| `PTY_MAX_BUFFER_SIZE`  | `1000000`  | Maximum characters to keep in output buffer per session |
 | `PTY_WEB_HOSTNAME`     | `::1`      | Hostname for the web server to bind to (IPv6 loopback by default) |
 | `PTY_WEB_PORT`         | `0` (random) | Port for the web server (0 = random port)        |
+
+The buffer discards older whole lines when either limit is exceeded, whichever comes first. A single oversized line keeps only its tail. With the default character limit, 50,000 lines fit only when they average at most 20 characters including newlines. Invalid or non-positive limits use the defaults.
 
 ### Permissions
 

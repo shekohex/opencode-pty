@@ -14,7 +14,7 @@ Returns:
 - Total line count in the buffer
 - Indicator if more lines are available
 
-The buffer stores up to PTY_MAX_BUFFER_LINES (default: 50000) lines. Older lines are discarded when the limit is reached.
+The buffer stores up to PTY_MAX_BUFFER_LINES (default: 50000) lines or PTY_MAX_BUFFER_SIZE (default: 1000000) characters, whichever limit is reached first. Older lines are discarded whole; a single oversized line keeps only its tail.
 
 Pattern Filtering:
 - When `pattern` is set, lines are FILTERED FIRST using the regex, then offset/limit apply to the MATCHES

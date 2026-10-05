@@ -123,14 +123,7 @@ export class SessionLifecycleManager {
     session.process?.onExit(({ exitCode, signal }) => {
       this.clearSessionTimeout(session.id)
 
-      // Flush any remaining incomplete line in the buffer
-      session.buffer.flush()
-
-      if (session.status === 'killing') {
-        session.status = 'killed'
-      } else {
-        session.status = 'exited'
-      }
+      session.status = session.status === 'killing' ? 'killed' : 'exited'
       session.exitCode = exitCode
       session.exitSignal = signal
       // When the process stopped, so a reader can report how long it ran: the

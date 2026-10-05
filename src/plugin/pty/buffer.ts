@@ -1,5 +1,6 @@
-// Default buffer size in characters (approximately 1MB)
-const DEFAULT_MAX_BUFFER_SIZE = parseInt(process.env.PTY_MAX_BUFFER_SIZE || '1000000', 10)
+// A missing, invalid or non-positive limit falls back to the default.
+const envLimit = (name: string, fallback: number) =>
+  Math.max(0, Number(process.env[name])) || fallback
 
 export interface SearchMatch {
   lineNumber: number
@@ -7,47 +8,52 @@ export interface SearchMatch {
 }
 
 export class RingBuffer {
-  private buffer: string = ''
-  private maxSize: number
+  private lines: string[] = ['']
+  private size = 0
 
-  constructor(maxSize: number = DEFAULT_MAX_BUFFER_SIZE) {
-    this.maxSize = maxSize
-  }
+  constructor(
+    private readonly maxSize = envLimit('PTY_MAX_BUFFER_SIZE', 1_000_000),
+    private readonly maxLines = envLimit('PTY_MAX_BUFFER_LINES', 50_000)
+  ) {}
 
   append(data: string): void {
-    this.buffer += data
-    if (this.buffer.length > this.maxSize) {
-      this.buffer = this.buffer.slice(-this.maxSize)
+    const lines = data.split('\n')
+    this.lines[this.lines.length - 1] += lines[0] ?? ''
+    for (let i = 1; i < lines.length; i++) {
+      this.lines.push(lines[i] ?? '')
     }
-  }
+    this.size += data.length
 
-  private splitBufferLines(): string[] {
-    const lines: string[] = this.buffer.split('\n')
-    // Remove empty string at end if buffer doesn't end with newline
-    if (lines.length && lines[lines.length - 1] === '') {
-      lines.pop()
+    let start = 0
+    while (
+      this.length - start > 1 &&
+      (this.length - start > this.maxLines || this.size > this.maxSize)
+    ) {
+      this.size -= (this.lines[start]?.length ?? 0) + 1
+      start++
     }
-    return lines
+    if (start > 0) this.lines.splice(0, start)
+    if (this.size > this.maxSize) {
+      this.lines[0] = this.lines[0]?.slice(this.size - this.maxSize) ?? ''
+      this.size = this.maxSize
+    }
   }
 
   read(offset: number = 0, limit?: number): string[] {
-    if (this.buffer === '') return []
-    const lines: string[] = this.splitBufferLines()
+    const lines = this.lines.slice(0, this.length)
     const start = Math.max(0, offset)
     const end = limit !== undefined ? start + limit : lines.length
     return lines.slice(start, end)
   }
 
   readRaw(): string {
-    return this.buffer
+    return this.lines.join('\n')
   }
 
   search(pattern: RegExp): SearchMatch[] {
     const matches: SearchMatch[] = []
-    const lines: string[] = this.splitBufferLines()
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
+    for (let i = 0; i < this.length; i++) {
+      const line = this.lines[i]
       if (line && pattern.test(line)) {
         matches.push({ lineNumber: i + 1, text: line })
       }
@@ -56,20 +62,15 @@ export class RingBuffer {
   }
 
   get length(): number {
-    if (this.buffer === '') return 0
-    const lines = this.splitBufferLines()
-    return lines.length
+    return this.lines.length - (this.lines[this.lines.length - 1] === '' ? 1 : 0)
   }
 
   get byteLength(): number {
-    return this.buffer.length
-  }
-
-  flush(): void {
-    // No-op in new implementation
+    return Buffer.byteLength(this.readRaw())
   }
 
   clear(): void {
-    this.buffer = ''
+    this.lines = ['']
+    this.size = 0
   }
 }
