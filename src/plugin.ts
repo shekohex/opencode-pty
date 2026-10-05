@@ -18,6 +18,7 @@ export const PTYPlugin = async (context: PluginContext): Promise<PluginResult> =
   let ptyServer: PTYServer | undefined
 
   return {
+    dispose: async () => ptyServer?.[Symbol.dispose](),
     'command.execute.before': async (input) => {
       if (input.command !== ptyOpenClientCommand && input.command !== ptyShowServerUrlCommand) {
         return

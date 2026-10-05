@@ -60,6 +60,7 @@ export interface ToolDraft {
 
 export interface PluginContextV2 {
   readonly options?: OpencodePtyOptions & Record<string, unknown>
+  readonly event?: Plugin.Context['event']
   readonly command?: {
     transform(
       callback: (commands: CommandDraft) => Promise<void> | void
@@ -84,7 +85,7 @@ export interface PluginContextV2 {
 
 export interface PluginV2 {
   readonly id: string
-  readonly setup: (context: PluginContextV2) => Promise<void> | void
+  readonly setup: (context: PluginContextV2) => ReturnType<Plugin.Plugin['setup']>
 }
 
 export function define(plugin: PluginV2): PluginV2 {

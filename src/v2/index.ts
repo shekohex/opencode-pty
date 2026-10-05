@@ -61,6 +61,23 @@ export const Plugin: PluginV2 = define({
     if (ctx.options?.autostart) {
       await getOrCreateServer(serverOptions)
     }
+
+    const events = new AbortController()
+    const eventDomain = ctx.event
+    if (typeof eventDomain?.subscribe === 'function') {
+      void (async () => {
+        for await (const event of eventDomain.subscribe({ signal: events.signal })) {
+          if (event.type === 'session.deleted') {
+            adapter.onSessionDeleted?.(event.data.sessionID)
+          }
+        }
+      })().catch((error) => {
+        if (!events.signal.aborted) console.error('[opencode-pty] event subscription failed', error)
+      })
+    }
+    // The server is left running: like the PTYs it shows, it is shared by every location in the
+    // process, and the host unloads a location after an hour without session activity.
+    return () => events.abort()
   },
 })
 
