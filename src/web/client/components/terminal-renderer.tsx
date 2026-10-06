@@ -15,7 +15,6 @@ declare global {
 interface RawTerminalProps {
   rawOutput: string
   onSendInput?: (data: string) => void
-  onInterrupt?: () => void
   disabled?: boolean
 }
 
@@ -89,21 +88,11 @@ export class RawTerminal extends React.Component<RawTerminalProps> {
   }
 
   private setupInputHandling(term: Terminal) {
-    const { onSendInput, onInterrupt, disabled } = this.props
+    const { onSendInput, disabled } = this.props
 
     if (disabled) return
 
-    const handleData = (data: string) => {
-      if (data === '\u0003') {
-        // Ctrl+C
-        onInterrupt?.()
-      } else {
-        // Send input to PTY server (PTY will echo back for interactive sessions)
-        onSendInput?.(data)
-      }
-    }
-
-    term.onData(handleData)
+    term.onData((data) => onSendInput?.(data))
   }
 
   override render() {

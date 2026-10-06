@@ -116,7 +116,6 @@ export function App() {
                 key={activeSession?.id}
                 rawOutput={rawOutput}
                 onSendInput={handleSendInput}
-                onInterrupt={handleKillSession}
                 disabled={!activeSession || activeSession.status !== 'running'}
               />
             </div>
