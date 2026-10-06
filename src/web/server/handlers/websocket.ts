@@ -40,6 +40,7 @@ class WebSocketHandler {
       const response: WSMessageServerSubscribedSession = {
         type: 'subscribed',
         sessionId: message.sessionId,
+        rawData: manager.getRawBuffer(message.sessionId)?.raw ?? '',
       }
       ws.send(JSON.stringify(response))
     }

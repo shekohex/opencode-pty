@@ -13,7 +13,6 @@ declare global {
 }
 
 interface RawTerminalProps {
-  rawOutput: string
   onSendInput?: (data: string) => void
   onInterrupt?: () => void
   disabled?: boolean
@@ -27,28 +26,15 @@ export class RawTerminal extends React.Component<RawTerminalProps> {
 
   override componentDidMount() {
     this.initializeTerminal()
-    if (this.xtermInstance && this.props.rawOutput) {
-      this.xtermInstance.write(this.props.rawOutput)
-    }
   }
 
-  override componentDidUpdate(prevProps: RawTerminalProps) {
-    if (!this.xtermInstance) return
+  // In band (RIS): Terminal.reset() keeps queued writes and any half-parsed escape sequence.
+  reset(snapshot: string): void {
+    this.write(`\x1bc${snapshot}`)
+  }
 
-    const currentData = this.props.rawOutput
-    const prevData = prevProps.rawOutput
-
-    // Optimized diff-based writing - only write new content
-    if (currentData.startsWith(prevData)) {
-      const newData = currentData.slice(prevData.length)
-      if (newData) {
-        this.xtermInstance.write(newData)
-      }
-    } else {
-      // Session switch/truncate/etc - clear and rewrite
-      this.xtermInstance.clear()
-      this.xtermInstance.write(currentData)
-    }
+  write(chunk: string): void {
+    this.xtermInstance?.write(chunk)
   }
 
   override componentWillUnmount() {
