@@ -101,6 +101,36 @@ describe('NotificationManager', () => {
     expect(Object.hasOwn(payload.body, 'variant')).toBe(false)
   })
 
+  it("prefers the parent session's current agent over the spawn-time agent", async () => {
+    const get = mock(async () => ({
+      data: { agent: 'agent-current' },
+    }))
+    const promptAsync = mock(async (_payload: PromptPayload) => {})
+    const manager = new NotificationManager()
+
+    manager.init({ session: { get, promptAsync } } as unknown as OpencodeClient)
+
+    await manager.sendExitNotification(createSession({ parentAgent: 'agent-two' }), 0)
+
+    const payload = promptAsync.mock.calls[0]?.[0]
+    if (!payload) throw new Error('Expected a prompt payload')
+    expect(payload.body.agent).toBe('agent-current')
+  })
+
+  it('falls back to the spawn-time agent when the parent session has none', async () => {
+    const get = mock(async () => ({ data: {} }))
+    const promptAsync = mock(async (_payload: PromptPayload) => {})
+    const manager = new NotificationManager()
+
+    manager.init({ session: { get, promptAsync } } as unknown as OpencodeClient)
+
+    await manager.sendExitNotification(createSession({ parentAgent: 'agent-two' }), 0)
+
+    const payload = promptAsync.mock.calls[0]?.[0]
+    if (!payload) throw new Error('Expected a prompt payload')
+    expect(payload.body.agent).toBe('agent-two')
+  })
+
   it('includes body.agent when originating agent is present', async () => {
     const promptAsync = mock(async (_payload: PromptPayload) => {})
     const manager = new NotificationManager()
