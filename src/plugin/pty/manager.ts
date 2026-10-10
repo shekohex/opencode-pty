@@ -127,11 +127,17 @@ class PTYManager {
     )
   }
 
-  search(id: string, pattern: RegExp, offset: number = 0, limit?: number): SearchResult | null {
+  search(
+    id: string,
+    pattern: RegExp,
+    offset: number = 0,
+    limit?: number,
+    normalize?: (line: string) => string
+  ): SearchResult | null {
     return withSession(
       this.lifecycleManager,
       id,
-      (session) => this.outputManager.search(session, pattern, offset, limit),
+      (session) => this.outputManager.search(session, pattern, offset, limit, normalize),
       null
     )
   }

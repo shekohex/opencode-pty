@@ -294,6 +294,7 @@ This eliminates the need for polling—perfect for long-running processes like b
 | `PTY_MAX_BUFFER_LINES` | `50000`    | Maximum lines to keep in output buffer per session |
 | `PTY_WEB_HOSTNAME`     | `::1`      | Hostname for the web server to bind to (IPv6 loopback by default) |
 | `PTY_WEB_PORT`         | `0` (random) | Port for the web server (0 = random port)        |
+| `PTY_SANITIZE_OUTPUT`  | enabled    | Strip terminal control sequences from `pty_read` output and `<pty_exited>` notifications; set to `0` or `false` to get the raw output |
 
 ### Permissions
 

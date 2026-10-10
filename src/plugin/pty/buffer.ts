@@ -42,12 +42,18 @@ export class RingBuffer {
     return this.buffer
   }
 
-  search(pattern: RegExp): SearchMatch[] {
+  /**
+   * Returns the lines matching `pattern`. When `normalize` is given, each line
+   * is normalized first and the pattern is matched against (and returns) the
+   * normalized text.
+   */
+  search(pattern: RegExp, normalize?: (line: string) => string): SearchMatch[] {
     const matches: SearchMatch[] = []
     const lines: string[] = this.splitBufferLines()
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
+      const rawLine = lines[i]
+      const line = rawLine !== undefined && normalize ? normalize(rawLine) : rawLine
       if (line && pattern.test(line)) {
         matches.push({ lineNumber: i + 1, text: line })
       }

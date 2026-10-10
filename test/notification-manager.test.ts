@@ -1,7 +1,10 @@
-import { describe, expect, it, mock } from 'bun:test'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
 import type { OpencodeClient } from '@opencode-ai/sdk'
 import { RingBuffer } from '../src/plugin/pty/buffer.ts'
-import { NotificationManager } from '../src/plugin/pty/notification-manager.ts'
+import {
+  NotificationManager,
+  buildExitNotification,
+} from '../src/plugin/pty/notification-manager.ts'
 import type { PTYSession } from '../src/plugin/pty/types.ts'
 
 type PromptPayload = {
@@ -157,5 +160,65 @@ describe('NotificationManager', () => {
     expect(text).toContain('TimeoutSeconds: 2')
     expect(text).toContain('Timed Out: yes')
     expect(text).toContain('Process reached its PTY timeout and was stopped automatically.')
+  })
+})
+
+describe('buildExitNotification', () => {
+  const original = process.env.PTY_SANITIZE_OUTPUT
+
+  afterEach(() => {
+    if (original === undefined) {
+      delete process.env.PTY_SANITIZE_OUTPUT
+    } else {
+      process.env.PTY_SANITIZE_OUTPUT = original
+    }
+  })
+
+  function sessionWithOutput(output: string): PTYSession {
+    const buffer = new RingBuffer()
+    buffer.append(output)
+    return createSession({ buffer })
+  }
+
+  it('reports the last line without terminal control sequences', () => {
+    delete process.env.PTY_SANITIZE_OUTPUT
+
+    const text = buildExitNotification(
+      sessionWithOutput('\x1b[?25l\x1b[2J\x1b[H\r\n\x1b[32mBuild completed.\x1b[0m\x1b[K\r\n'),
+      0
+    )
+
+    expect(text).toContain('Last Line: Build completed.\n')
+    expect(text).not.toContain('\x1b')
+    expect(text).not.toContain('\r')
+  })
+
+  it('skips trailing lines that only contain control sequences', () => {
+    delete process.env.PTY_SANITIZE_OUTPUT
+
+    const text = buildExitNotification(
+      sessionWithOutput(
+        'real output\r\n\x1b[?9001h\x1b[?1004h\x1b]0;C:\\Windows\\pwsh.exe\x07\x1b[K'
+      ),
+      0
+    )
+
+    expect(text).toContain('Last Line: real output\n')
+  })
+
+  it('reports an empty last line when the output is only control sequences', () => {
+    delete process.env.PTY_SANITIZE_OUTPUT
+
+    const text = buildExitNotification(sessionWithOutput('\x1b[?9001h\x1b[?1004h\x1b[2J\x1b[H'), 0)
+
+    expect(text).toContain('Output Lines: 1\nLast Line: \n')
+  })
+
+  it('keeps the raw last line when PTY_SANITIZE_OUTPUT=0', () => {
+    process.env.PTY_SANITIZE_OUTPUT = '0'
+
+    const text = buildExitNotification(sessionWithOutput('\x1b[32mdone\x1b[0m\n'), 0)
+
+    expect(text).toContain('Last Line: \x1b[32mdone\x1b[0m\n')
   })
 })

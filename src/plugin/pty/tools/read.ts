@@ -3,6 +3,7 @@ import { manager } from '../manager.ts'
 import { DEFAULT_READ_LIMIT, MAX_LINE_LENGTH } from '../../../shared/constants.ts'
 import { buildSessionNotFoundError } from '../utils.ts'
 import { formatLine } from '../formatters.ts'
+import { isOutputSanitizationEnabled, sanitizeTerminalText } from '../sanitize.ts'
 import type { PTYSessionInfo } from '../types.ts'
 import DESCRIPTION from './read.txt'
 
@@ -106,7 +107,9 @@ function handlePatternRead(
 ): string {
   const regex = validateAndCreateRegex(pattern, ignoreCase)
 
-  const result = manager.search(id, regex, offset, limit)
+  // Match against the text the agent will see, not the raw escape sequences.
+  const normalize = isOutputSanitizationEnabled() ? sanitizeTerminalText : undefined
+  const result = manager.search(id, regex, offset, limit, normalize)
   if (!result) {
     throw buildSessionNotFoundError(id)
   }
@@ -170,8 +173,13 @@ function handlePlainRead(
     )
   }
 
+  const sanitize = isOutputSanitizationEnabled()
   const formattedLines = result.lines.map((line, index) =>
-    formatLine(line, result.offset + index + 1, MAX_LINE_LENGTH)
+    formatLine(
+      sanitize ? sanitizeTerminalText(line) : line,
+      result.offset + index + 1,
+      MAX_LINE_LENGTH
+    )
   )
 
   const paginationMessage = `(Buffer has more lines. Use offset=${result.offset + result.lines.length} to read beyond line ${result.offset + result.lines.length})`

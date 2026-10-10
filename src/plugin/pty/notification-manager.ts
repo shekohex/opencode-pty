@@ -2,6 +2,7 @@ import type { SessionNotifier } from '../../adapters/types.ts'
 import type { PTYSession } from './types.ts'
 import type { OpencodeClient } from '@opencode-ai/sdk'
 import { NOTIFICATION_LINE_TRUNCATE, NOTIFICATION_TITLE_TRUNCATE } from '../constants.ts'
+import { isOutputSanitizationEnabled, sanitizeTerminalText } from './sanitize.ts'
 
 export class NotificationManager implements SessionNotifier {
   private client: OpencodeClient | null = null
@@ -63,19 +64,22 @@ export class NotificationManager implements SessionNotifier {
  * context's `ctx.session.prompt`).
  */
 export function buildExitNotification(session: PTYSession, exitCode: number): string {
-  const lineCount = session.buffer.length
+  const bufferLines = session.buffer.read()
+  const lineCount = bufferLines.length
+  const sanitize = isOutputSanitizationEnabled()
   let lastLine = ''
-  if (lineCount > 0) {
-    for (let i = lineCount - 1; i >= 0; i--) {
-      const bufferLines = session.buffer.read(i, 1)
-      const line = bufferLines[0]
-      if (line !== undefined && line.trim() !== '') {
-        lastLine =
-          line.length > NOTIFICATION_LINE_TRUNCATE
-            ? `${line.slice(0, NOTIFICATION_LINE_TRUNCATE)}...`
-            : line
-        break
-      }
+  for (let i = lineCount - 1; i >= 0; i--) {
+    const rawLine = bufferLines[i]
+    if (rawLine === undefined) continue
+    // Lines that hold only control sequences (e.g. the ConPTY preamble) are
+    // blank once sanitized and must not be reported as the last line.
+    const line = sanitize ? sanitizeTerminalText(rawLine) : rawLine
+    if (line.trim() !== '') {
+      lastLine =
+        line.length > NOTIFICATION_LINE_TRUNCATE
+          ? `${line.slice(0, NOTIFICATION_LINE_TRUNCATE)}...`
+          : line
+      break
     }
   }
 

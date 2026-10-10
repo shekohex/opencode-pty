@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach, mock, spyOn, afterAll } from 'bun:test'
+import { describe, it, expect, beforeEach, afterEach, mock, spyOn, afterAll } from 'bun:test'
 import { ptySpawn } from '../src/plugin/pty/tools/spawn.ts'
 import { ptyRead } from '../src/plugin/pty/tools/read.ts'
 import { ptyList } from '../src/plugin/pty/tools/list.ts'
 import { RingBuffer } from '../src/plugin/pty/buffer.ts'
 import { manager } from '../src/plugin/pty/manager.ts'
+import { sanitizeTerminalText } from '../src/plugin/pty/sanitize.ts'
 
 describe('PTY Tools', () => {
   afterAll(() => {
@@ -239,10 +240,74 @@ describe('PTY Tools', () => {
 
       const result = await ptyRead.execute(args, ctx)
 
-      expect(manager.search).toHaveBeenCalledWith('test-session-id', /line/, 0, 500)
+      expect(manager.search).toHaveBeenCalledWith(
+        'test-session-id',
+        /line/,
+        0,
+        500,
+        sanitizeTerminalText
+      )
       expect(result).toContain('<pty_output id="test-session-id" status="running" pattern="line">')
       expect(result).toContain('00001| line 1')
       expect(result).toContain('(1 match from 2 total lines)')
+    })
+
+    describe('terminal control sequences', () => {
+      const original = process.env.PTY_SANITIZE_OUTPUT
+      const ctx = {
+        sessionID: 'parent',
+        messageID: 'msg',
+        agent: 'agent',
+        abort: new AbortController().signal,
+        metadata: () => {},
+        ask: async () => {},
+        directory: '/tmp',
+        worktree: '/tmp',
+      }
+
+      beforeEach(() => {
+        spyOn(manager, 'read').mockReturnValue({
+          lines: ['\x1b[?9001h\x1b[?1004h\x1b[2J\x1b[H', '\x1b[31merror:\x1b[0m boom\r'],
+          offset: 0,
+          hasMore: false,
+          totalLines: 2,
+        })
+      })
+
+      afterEach(() => {
+        if (original === undefined) {
+          delete process.env.PTY_SANITIZE_OUTPUT
+        } else {
+          process.env.PTY_SANITIZE_OUTPUT = original
+        }
+      })
+
+      it('strips them from read output', async () => {
+        delete process.env.PTY_SANITIZE_OUTPUT
+
+        const result = await ptyRead.execute({ id: 'test-session-id' }, ctx)
+
+        expect(result).not.toContain('\x1b')
+        expect(result).not.toContain('\r')
+        expect(result).toContain('00001| \n')
+        expect(result).toContain('00002| error: boom\n')
+      })
+
+      it('keeps them when PTY_SANITIZE_OUTPUT=0', async () => {
+        process.env.PTY_SANITIZE_OUTPUT = '0'
+
+        const result = await ptyRead.execute({ id: 'test-session-id' }, ctx)
+
+        expect(result).toContain('00002| \x1b[31merror:\x1b[0m boom\r')
+      })
+
+      it('does not normalize search lines when PTY_SANITIZE_OUTPUT=0', async () => {
+        process.env.PTY_SANITIZE_OUTPUT = '0'
+
+        await ptyRead.execute({ id: 'test-session-id', pattern: 'boom' }, ctx)
+
+        expect(manager.search).toHaveBeenCalledWith('test-session-id', /boom/, 0, 500, undefined)
+      })
     })
 
     it('should throw for invalid session', async () => {
@@ -376,6 +441,18 @@ describe('PTY Tools', () => {
         { lineNumber: 1, text: 'hello world' },
         { lineNumber: 3, text: 'hello test' },
       ])
+    })
+
+    it('should match and return normalized lines when searching with a normalizer', () => {
+      const buffer = new RingBuffer(200)
+      buffer.append('\x1b[?25l\x1b[2J\n\x1b[31merror:\x1b[0m boom\nok 1\n')
+
+      expect(buffer.search(/^error: boom$/, sanitizeTerminalText)).toEqual([
+        { lineNumber: 2, text: 'error: boom' },
+      ])
+      // Digits inside escape sequences must not produce matches.
+      expect(buffer.search(/\d/, sanitizeTerminalText)).toEqual([{ lineNumber: 3, text: 'ok 1' }])
+      expect(buffer.readRaw()).toContain('\x1b[31m')
     })
 
     it('should clear buffer', () => {

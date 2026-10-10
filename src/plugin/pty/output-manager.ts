@@ -17,8 +17,14 @@ export class OutputManager {
     return { lines, totalLines, offset, hasMore }
   }
 
-  search(session: PTYSession, pattern: RegExp, offset: number = 0, limit?: number): SearchResult {
-    const allMatches = session.buffer.search(pattern)
+  search(
+    session: PTYSession,
+    pattern: RegExp,
+    offset: number = 0,
+    limit?: number,
+    normalize?: (line: string) => string
+  ): SearchResult {
+    const allMatches = session.buffer.search(pattern, normalize)
     const totalMatches = allMatches.length
     const totalLines = session.buffer.length
     const paginatedMatches =
