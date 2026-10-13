@@ -43,14 +43,14 @@ Add the plugin to your [OpenCode config](https://opencode.ai/docs/config/):
 
 ### OpenCode V2
 
-OpenCode V2 uses the new plugin API. You can load `opencode-pty/v2` and optionally configure options (such as a fixed web UI port):
+OpenCode V2 uses the new plugin API. Load the package by its bare npm ref — the `.` entrypoint is a dual-mode export that serves both runtimes — and optionally configure options (such as a fixed web UI port):
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": [
+  "plugins": [
     {
-      "package": "opencode-pty/v2",
+      "package": "opencode-pty",
       "options": {
         "port": 4200,
         "hostname": "127.0.0.1",
@@ -60,6 +60,11 @@ OpenCode V2 uses the new plugin API. You can load `opencode-pty/v2` and optional
   ]
 }
 ```
+
+Notes for V2:
+
+- V2 reads the `plugins` array (object form). The V1 `plugin` field is silently ignored — a V1-shaped array produces zero plugin loads.
+- The previous `opencode-pty/v2` subpath ref does not install: the V2 loader parses subpath refs as npm install specs ([#67](https://github.com/shekohex/opencode-pty/issues/67)). The bare ref works via the dual-mode default export; the `./v2` subpath remains valid for direct-import consumers.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
