@@ -127,6 +127,16 @@ describe('OpenCode V2 Plugin API', () => {
       expect(server.server.url.hostname).toBe('127.0.0.1')
     })
 
+    it('shares one server across concurrent initialization', async () => {
+      const [first, second] = await Promise.all([
+        getOrCreateServer({ port: 0, hostname: '127.0.0.1' }),
+        getOrCreateServer({ port: 0, hostname: '127.0.0.1' }),
+      ])
+
+      expect(second).toBe(first)
+      expect(getActiveServer()).toBe(first)
+    })
+
     it('autostarts server when autostart option is true in ctx.options', async () => {
       expect(getActiveServer()).toBeNull()
 

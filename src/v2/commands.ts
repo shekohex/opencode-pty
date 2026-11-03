@@ -5,23 +5,53 @@ import type { CommandDraft } from './types.ts'
 export const PTY_OPEN_CLIENT_COMMAND = 'pty-open-background-spy'
 export const PTY_SHOW_SERVER_URL_COMMAND = 'pty-show-server-url'
 
-let activeServer: PTYServer | null = null
+interface ServerRegistry {
+  active: PTYServer | null
+  pending: Promise<PTYServer> | null
+}
+
+const serverRegistryKey = Symbol.for('opencode-pty.v2.server')
+const runtime = globalThis as typeof globalThis & Record<symbol, unknown>
+
+function getServerRegistry(): ServerRegistry {
+  let registry = runtime[serverRegistryKey] as ServerRegistry | undefined
+  if (!registry) {
+    registry = { active: null, pending: null }
+    runtime[serverRegistryKey] = registry
+  }
+  return registry
+}
 
 export async function getOrCreateServer(options?: ServerOptions): Promise<PTYServer> {
-  if (!activeServer) {
-    activeServer = await PTYServer.createServer(options)
+  const registry = getServerRegistry()
+  if (registry.active) {
+    return registry.active
   }
-  return activeServer
+  if (registry.pending) {
+    return registry.pending
+  }
+
+  const pending = PTYServer.createServer(options)
+  registry.pending = pending
+  try {
+    registry.active = await pending
+    return registry.active
+  } finally {
+    if (registry.pending === pending) {
+      registry.pending = null
+    }
+  }
 }
 
 export function getActiveServer(): PTYServer | null {
-  return activeServer
+  return getServerRegistry().active
 }
 
 export function stopActiveServer(): void {
-  if (activeServer) {
-    activeServer[Symbol.dispose]()
-    activeServer = null
+  const registry = getServerRegistry()
+  if (registry.active) {
+    registry.active[Symbol.dispose]()
+    registry.active = null
   }
 }
 
