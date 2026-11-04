@@ -65,6 +65,29 @@ Notes for V2:
 
 - V2 reads the `plugins` array (object form). The V1 `plugin` field is silently ignored — a V1-shaped array produces zero plugin loads.
 - The previous `opencode-pty/v2` subpath ref does not install: the V2 loader parses subpath refs as npm install specs ([#67](https://github.com/shekohex/opencode-pty/issues/67)). The bare ref works via the dual-mode default export; the `./v2` subpath remains valid for direct-import consumers.
+- A plugin must export a default definition with an `id` and a `setup` (or `effect`) function. The `.` entrypoint now exports exactly that alongside the V1 `server` entrypoint.
+- If the npm ref fails to install through OpenCode's bundled npm with `<git dep preparation failed>`, use a local clone (below). That failure happens for any package with dependencies, not just this one.
+
+#### Install from a local clone
+
+```bash
+git clone https://github.com/shekohex/opencode-pty.git
+cd opencode-pty
+npm install --legacy-peer-deps   # plain npm fails on react@18 vs @opentui/keymap peer
+```
+
+Then point a directory entry at the clone:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["/absolute/path/to/opencode-pty"]
+}
+```
+
+A directory entry resolves a root `server` file, else `index`, with a `.ts`, `.tsx`, or `.js`
+extension; `package.json` `main` and `exports` are not followed for a path entry. This
+repository's root `index.ts` is that entrypoint, so the clone loads without a build step.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -302,7 +325,27 @@ This eliminates the need for polling—perfect for long-running processes like b
 
 ### Permissions
 
-This plugin respects OpenCode's [permission settings](https://opencode.ai/docs/permissions/) for the `bash` tool. Commands spawned via `pty_spawn` are checked against your `permission.bash` configuration.
+This plugin respects OpenCode's [permission settings](https://opencode.ai/docs/permissions/). Commands spawned via `pty_spawn`, and command lines sent with `pty_write`, are checked with the same permission surface the host's own shell tool uses.
+
+On **V2** that surface is `ctx.permission.assert`: the plugin asks the host to evaluate the session's rules and only spawns once the check resolves. A `deny` rule blocks the spawn, and an `ask` rule raises OpenCode's normal permission prompt — the answer is honoured, including saved approvals. V2 names the shell action `shell`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permissions": [
+    { "action": "shell", "resource": "npm *", "effect": "allow" },
+    { "action": "shell", "resource": "git push", "effect": "deny" },
+    { "action": "shell", "resource": "terraform *", "effect": "deny" }
+  ]
+}
+```
+
+Two V2 edge cases are deliberate:
+
+- A check that cannot be attributed to a session is **denied** rather than allowed. Every PTY tool call carries its session, so this only affects calls made outside a tool invocation, and denying keeps a configured `deny` rule from being bypassed.
+- A host that exposes no `ctx.permission` domain gets a startup warning and no checks, matching the pre-2.0 fallback below. This plugin cannot read `permissions` itself on V2 — the plugin context has no config reader — so the host is the only authority.
+
+On **V1** the plugin reads `permission.bash` from the host config:
 
 ```json
 {
@@ -318,12 +361,12 @@ This plugin respects OpenCode's [permission settings](https://opencode.ai/docs/p
 ```
 
 > [!IMPORTANT]
-> **Limitations compared to built-in bash tool:**
+> **V1 limitations compared to the built-in bash tool:**
 >
-> - **"ask" permissions are treated as "deny"**: Since plugins cannot trigger OpenCode's permission prompt UI, commands matching an "ask" pattern will be denied. A toast notification will inform you when this happens. Configure explicit "allow" or "deny" for commands you want to use with PTY.
-> - **"external_directory" with "ask" is treated as "allow"**: When the working directory is outside the project and `permission.external_directory` is set to "ask", this plugin allows it (with a log message). Set to "deny" explicitly if you want to block external directories.
+> - **"ask" permissions are treated as "deny"**: Since the V1 plugin API cannot trigger OpenCode's permission prompt UI, commands matching an "ask" pattern will be denied. A toast notification will inform you when this happens. Configure explicit "allow" or "deny" for commands you want to use with PTY. (V2 does not have this limitation — `ctx.permission.assert` prompts.)
+> - **"external_directory" with "ask" is treated as "allow"**: When the working directory is outside the project and `permission.external_directory` is set to "ask", the V1 path allows it (with a log message). Set to "deny" explicitly if you want to block external directories.
 
-#### Example: Allow specific commands for PTY
+#### Example: Allow specific commands for PTY (V1)
 
 ```json
 {
