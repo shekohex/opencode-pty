@@ -1,4 +1,5 @@
 import type { Plugin } from '@opencode/plugin'
+import type { V2PermissionDomain } from '../adapters/v2/permissions.ts'
 
 export interface OpencodePtyOptions {
   /**
@@ -60,6 +61,12 @@ export interface ToolDraft {
 
 export interface PluginContextV2 {
   readonly options?: OpencodePtyOptions & Record<string, unknown>
+  /**
+   * opencode v2's permission domain. `assert` evaluates the session's rules
+   * (`allow`/`deny`/`ask`, including saved approvals and agent rules) and
+   * prompts when a rule resolves to `ask`. Optional for hosts pre-2.0.x.
+   */
+  readonly permission?: V2PermissionDomain
   readonly command?: {
     transform(
       callback: (commands: CommandDraft) => Promise<void> | void

@@ -106,7 +106,12 @@ export class PTYServer implements Disposable {
       websocket: {
         data: undefined as undefined,
         perMessageDeflate: true,
-        open: (ws) => ws.subscribe('sessions:update'),
+        // Bun's `subscribe` returns a boolean; the websocket `open` handler is
+        // typed `void | Promise<void>`, so the call is wrapped to keep the
+        // build green instead of relying on emit-on-error.
+        open: (ws) => {
+          ws.subscribe('sessions:update')
+        },
         message: handleWebSocketMessage,
         close: (ws) => {
           ws.subscriptions.forEach((topic) => {

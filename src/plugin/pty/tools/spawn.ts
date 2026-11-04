@@ -1,6 +1,10 @@
 import { tool } from '@opencode-ai/plugin'
 import { manager } from '../manager.ts'
-import { checkCommandPermission, checkWorkdirPermission } from '../permissions.ts'
+import {
+  checkCommandPermission,
+  checkWorkdirPermission,
+  permissionRequestContext,
+} from '../permissions.ts'
 import DESCRIPTION from './spawn.txt'
 
 const NOTIFY_ON_EXIT_INSTRUCTIONS = [
@@ -40,10 +44,11 @@ export const ptySpawn = tool({
       ),
   },
   async execute(args, ctx) {
-    await checkCommandPermission(args.command, args.args ?? [])
+    const permissionContext = permissionRequestContext(ctx)
+    await checkCommandPermission(args.command, args.args ?? [], permissionContext)
 
     if (args.workdir) {
-      await checkWorkdirPermission(args.workdir)
+      await checkWorkdirPermission(args.workdir, permissionContext)
     }
 
     const sessionId = ctx.sessionID
