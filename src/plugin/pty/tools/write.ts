@@ -1,6 +1,6 @@
 import { tool } from '@opencode-ai/plugin'
 import { manager } from '../manager.ts'
-import { checkCommandPermission } from '../permissions.ts'
+import { checkCommandPermission, permissionRequestContext } from '../permissions.ts'
 import { buildSessionNotFoundError } from '../utils.ts'
 import DESCRIPTION from './write.txt'
 
@@ -59,7 +59,7 @@ export const ptyWrite = tool({
     id: tool.schema.string().describe('The PTY session ID (e.g., pty_a1b2c3d4)'),
     data: tool.schema.string().describe('The input data to send to the PTY'),
   },
-  async execute(args) {
+  async execute(args, ctx) {
     const session = manager.get(args.id)
     if (!session) {
       throw buildSessionNotFoundError(args.id)
@@ -73,10 +73,11 @@ export const ptyWrite = tool({
     const parsedData = parseEscapeSequences(args.data)
 
     const commands = extractCommands(parsedData)
+    const permissionContext = permissionRequestContext(ctx)
     for (const commandLine of commands) {
       const { command, args: cmdArgs } = parseCommand(commandLine)
       if (command) {
-        await checkCommandPermission(command, cmdArgs)
+        await checkCommandPermission(command, cmdArgs, permissionContext)
       }
     }
 

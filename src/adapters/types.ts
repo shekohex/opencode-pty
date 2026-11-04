@@ -9,11 +9,26 @@ export interface SessionNotifier {
 }
 
 /**
+ * The tool invocation a permission check belongs to.
+ *
+ * Hosts that evaluate permissions per session need this to attribute the check
+ * to a session, an agent and a tool call. It is optional because a check can be
+ * made outside a tool call; hosts that require it decide what an absent value
+ * means (the V2 adapter denies, see `V2PermissionAuthorizer`).
+ */
+export interface PermissionRequestContext {
+  sessionID?: string
+  agent?: string
+  messageID?: string
+  callID?: string
+}
+
+/**
  * Host-agnostic authorizer for validating command and workdir execution permissions.
  */
 export interface PermissionAuthorizer {
-  checkCommand(command: string, args: string[]): Promise<void>
-  checkWorkdir(workdir: string): Promise<void>
+  checkCommand(command: string, args: string[], context?: PermissionRequestContext): Promise<void>
+  checkWorkdir(workdir: string, context?: PermissionRequestContext): Promise<void>
 }
 
 /**

@@ -1,4 +1,5 @@
 import { createV2Adapter } from '../adapters/v2/index.ts'
+import { createV2PermissionAuthorizer } from '../adapters/v2/permissions.ts'
 import { installHostAdapter } from '../adapters/index.ts'
 import type { ServerOptions } from '../web/server/server.ts'
 import { getOrCreateServer, registerV2Commands } from './commands.ts'
@@ -31,7 +32,25 @@ export const Plugin: PluginV2 = define({
       )
     }
 
-    const adapter = createV2Adapter({ notifier })
+    // The project directory lives on `location`. `ctx.worktree` is deliberately
+    // NOT used: it is a domain object on the V2 API, not a path, and passing it
+    // through reached createHash and threw. Absent paths only mean no record is
+    // published — the sidebar then falls back to the instance-scoped URL scrape.
+    const location = (ctx as unknown as { location?: { directory?: unknown } }).location
+    const directory = typeof location?.directory === 'string' ? location.directory : undefined
+
+    // opencode V2 exposes no `config.get()`, so `permission.bash` cannot be
+    // re-read and re-implemented here: `ctx.permission.assert` is the only
+    // documented surface that evaluates the session's rules and prompts on
+    // `ask`. Without it PTY spawns would bypass `permissions` deny rules (#80).
+    const permissions = createV2PermissionAuthorizer(ctx.permission, directory)
+    if (!permissions) {
+      console.warn(
+        '[opencode-pty] host does not expose ctx.permission.assert — PTY commands are not checked against permissions'
+      )
+    }
+
+    const adapter = createV2Adapter({ notifier, permissions })
     installHostAdapter(adapter)
 
     if (ctx.tool && typeof ctx.tool.transform === 'function') {
@@ -39,13 +58,6 @@ export const Plugin: PluginV2 = define({
         registerV2Tools(draft)
       })
     }
-
-    // The project directory lives on `location`. `ctx.worktree` is deliberately
-    // NOT used: it is a domain object on the V2 API, not a path, and passing it
-    // through reached createHash and threw. Absent paths only mean no record is
-    // published — the sidebar then falls back to the instance-scoped URL scrape.
-    const location = (ctx as unknown as { location?: { directory?: unknown } }).location
-    const directory = typeof location?.directory === 'string' ? location.directory : undefined
     const serverOptions: ServerOptions = {
       port: ctx.options?.port,
       hostname: ctx.options?.hostname,
