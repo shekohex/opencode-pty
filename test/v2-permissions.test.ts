@@ -121,6 +121,8 @@ describe('OpenCode V2 permission authorizer (#80)', () => {
 
       expect(calls).toHaveLength(1)
       expect(calls[0]?.action).toBe('external_directory')
+      // Resolved lexically, so a rule is matched against the real boundary.
+      expect(calls[0]?.resources).toEqual(['/etc', '/etc/*'])
     })
   })
 

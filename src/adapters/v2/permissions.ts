@@ -71,7 +71,7 @@ export class V2PermissionAuthorizer implements PermissionAuthorizer {
       return
     }
 
-    const normalized = workdir.replace(/\/$/, '')
+    const normalized = normalizeSegments(workdir)
     await this.assert(context, 'external_directory', [normalized, `${normalized}/*`])
   }
 
@@ -107,16 +107,39 @@ export class V2PermissionAuthorizer implements PermissionAuthorizer {
 /**
  * True when `path` is the same as, or below, `root`.
  *
- * Compared segment-wise so `/workspace/app-evil` is not treated as inside
- * `/workspace/app`, and path traversal is refused rather than resolved.
+ * Both sides are resolved lexically first, so `/workspace/app/../etc` is not
+ * mistaken for a path inside `/workspace/app`, and the comparison is
+ * segment-wise so `/workspace/app-evil` is not inside `/workspace/app` either.
  */
 function isInside(path: string, root: string): boolean {
-  const normalizedRoot = root.replace(/\/+$/, '') || '/'
-  const normalizedPath = path.replace(/\/+$/, '') || '/'
-  if (normalizedPath.includes('/../')) {
-    return false
-  }
+  const normalizedRoot = normalizeSegments(root)
+  const normalizedPath = normalizeSegments(path)
   return normalizedPath === normalizedRoot || normalizedPath.startsWith(`${normalizedRoot}/`)
+}
+
+/**
+ * Collapses `.` and `..` segments without touching the filesystem.
+ *
+ * `..` never climbs above the first segment: a path that escapes its own root
+ * then simply fails the prefix comparison above.
+ */
+function normalizeSegments(path: string): string {
+  const absolute = path.startsWith('/')
+  const segments: string[] = []
+  for (const segment of path.split('/')) {
+    if (!segment || segment === '.') {
+      continue
+    }
+    if (segment === '..') {
+      if (segments.length > 0) {
+        segments.pop()
+      }
+      continue
+    }
+    segments.push(segment)
+  }
+  const joined = segments.join('/')
+  return absolute ? `/${joined}` : joined || '.'
 }
 
 export function createV2PermissionAuthorizer(
