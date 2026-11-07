@@ -13,11 +13,13 @@ import type { PTYSession } from '../plugin/pty/types.ts'
  */
 export type V2SessionPrompt = Pick<Plugin.Context['session'], 'prompt'>
 
+const exitMessageIds = new WeakMap<PTYSession, string>()
+
 /**
  * Delivers `<pty_exited>` notifications through opencode v2's plugin context.
  *
- * The notification is admitted as a user prompt with a deterministic message
- * id (`pty_<id>_exited`), so `admission.reconcile` makes repeated deliveries
+ * The notification is admitted as a user prompt with a stable message id,
+ * so `admission.reconcile` makes repeated deliveries
  * idempotent (e.g. when a kill races the process exit). Default delivery
  * (`steer`) plus `execution.wake` starts a new agent turn, and opencode
  * resolves the run with the session's *current* model — so the user's model
@@ -39,9 +41,15 @@ export class V2SessionNotifier implements SessionNotifier {
 
     const text = buildExitNotification(session, exitCode)
     try {
+      const { ascending } = await import('@opencode/schema/identifier')
+      let id = exitMessageIds.get(session)
+      if (!id) {
+        id = `msg_${ascending()}`
+        exitMessageIds.set(session, id)
+      }
       await this.session.prompt({
         sessionID: session.parentSessionId,
-        id: `pty_${session.id}_exited`,
+        id,
         text,
       })
     } catch (error) {
