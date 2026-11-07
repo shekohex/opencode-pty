@@ -95,6 +95,7 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-serialize": "^0.14.0",
     "@xterm/xterm": "^6.0.0",
+    "effect": "4.0.0-rc.112",
     "happy-dom": "^20.5.0",
     "jsdom": "^27.4.0",
     "playwright-core": "1.57.0",
@@ -124,6 +125,7 @@
     "@opencode-ai/plugin": "^1.18",
     "@opencode-ai/sdk": "^1.18",
     "@opencode/plugin": "^2.0.10",
+    "@opencode/schema": "^2.0.10",
     "bun-pty": "^0.4.10",
     "open": "^11.0.0"
   }
