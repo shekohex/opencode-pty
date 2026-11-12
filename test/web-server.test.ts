@@ -135,6 +135,7 @@ describe('Web Server', () => {
       expect(sessionData.id).toBe(session.id)
       expect(sessionData.command).toBe('bash')
       expect(sessionData.args).toEqual([])
+      expect(sessionData.parentSessionId).toBe('test')
     }, 200)
 
     it('should return 404 for non-existent session', async () => {
