@@ -212,6 +212,7 @@ export class SessionLifecycleManager {
       command: session.command,
       args: session.args,
       workdir: session.workdir,
+      parentSessionId: session.parentSessionId,
       status: session.status,
       notifyOnExit: session.notifyOnExit,
       timeoutSeconds: session.timeoutSeconds,

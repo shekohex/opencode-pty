@@ -33,6 +33,7 @@ function buildSpawnInfo(overrides: Partial<PTYSessionInfo> = {}): PTYSessionInfo
     command: 'echo',
     args: ['blocked'],
     workdir: process.cwd(),
+    parentSessionId: 'ses_test',
     status: 'running',
     notifyOnExit: false,
     timedOut: false,

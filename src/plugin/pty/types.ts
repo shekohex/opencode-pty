@@ -33,6 +33,7 @@ export interface PTYSessionInfo {
   command: string
   args: string[]
   workdir: string
+  parentSessionId: string
   status: PTYStatus
   notifyOnExit: boolean
   timeoutSeconds?: number

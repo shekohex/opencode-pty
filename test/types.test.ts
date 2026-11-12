@@ -34,6 +34,7 @@ describe('Web Types', () => {
           createdAt: new Date().toISOString(),
           args: ['hello'],
           workdir: '/home/user',
+          parentSessionId: 'ses_test',
         },
       ]
 
@@ -73,6 +74,7 @@ describe('Web Types', () => {
         createdAt: new Date().toISOString(),
         args: ['Hello, World!'],
         workdir: '/home/user',
+        parentSessionId: 'ses_test',
       }
 
       expect(session.id).toBe('pty_12345')
@@ -99,6 +101,7 @@ describe('Web Types', () => {
         createdAt: new Date('2026-01-21T10:00:00.000Z').toISOString(),
         args: ['Hello, World!'],
         workdir: '/home/user',
+        parentSessionId: 'ses_test',
       }
 
       expect(session.exitCode).toBeUndefined()
