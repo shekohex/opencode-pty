@@ -10,7 +10,6 @@ export declare class SessionLifecycleManager {
     private setupEventHandlers;
     spawn(opts: SpawnOptions, onData: (session: PTYSession, data: string) => void, onExit: (session: PTYSession, exitCode: number | null) => void): PTYSessionInfo;
     kill(id: string, cleanup?: boolean): boolean;
-    private clearAllSessionsInternal;
     clearAllSessions(): void;
     cleanupBySession(parentSessionId: string): void;
     getSession(id: string): PTYSession | null;
