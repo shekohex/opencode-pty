@@ -3,7 +3,8 @@ node_modules
 
 # output
 out
-dist
+# dist is committed so a `github:` install has the built entrypoint
+#dist
 *.tgz
 
 # code coverage

@@ -28,7 +28,10 @@
   },
   "homepage": "https://github.com/shekohex/opencode-pty#readme",
   "files": [
-    "dist"
+    "dist",
+    "index.ts",
+    "README.md",
+    "LICENSE"
   ],
   "license": "MIT",
   "type": "module",
@@ -74,7 +77,6 @@
     "build:plugin": "tsc -p tsconfig.build.json && bun x copyfiles -u 0 \"src/**/*.txt\" dist",
     "build:dev": "bun clean && bun build:plugin && vite build --mode development",
     "build:prod": "bun clean && bun build:plugin && vite build --mode production",
-    "prepack": "bun build:prod",
     "clean": "rm -rf dist playwright-report test-results",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
@@ -83,7 +85,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.13",
-    "@opentui/core": "0.4.5",
+    "@opentui/core": "^0.8.0",
     "@opentui/keymap": "0.4.5",
     "@opentui/solid": "0.4.5",
     "@playwright/test": "1.57.0",
