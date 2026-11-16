@@ -1,4 +1,5 @@
 import { tool } from '@opencode-ai/plugin'
+import { resolve } from 'node:path'
 import { manager } from '../manager.ts'
 import {
   checkCommandPermission,
@@ -47,15 +48,20 @@ export const ptySpawn = tool({
     const permissionContext = permissionRequestContext(ctx)
     await checkCommandPermission(args.command, args.args ?? [], permissionContext)
 
-    if (args.workdir) {
-      await checkWorkdirPermission(args.workdir, permissionContext)
+    // Resolve relative workdirs against the session project directory.
+    // Without resolution, permission checks and manager.spawn receive a
+    // relative path that may point outside the expected directory tree.
+    const workdir = resolve(ctx.directory ?? '', args.workdir ?? '')
+
+    if (workdir) {
+      await checkWorkdirPermission(workdir, permissionContext)
     }
 
     const sessionId = ctx.sessionID
     const info = manager.spawn({
       command: args.command,
       args: args.args,
-      workdir: args.workdir,
+      workdir,
       env: args.env,
       title: args.title,
       description: args.description,

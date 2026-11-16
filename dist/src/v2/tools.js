@@ -20,7 +20,7 @@ export const ptyTools = {
  *   - `args` (Zod raw shape) -> `input`: JSON Schema (Zod v4 `toJSONSchema`)
  *   - string result -> `{ content }`
  */
-export function registerV2Tools(draft) {
+export function registerV2Tools(draft, directory) {
     if (typeof draft.add !== 'function') {
         return;
     }
@@ -32,7 +32,8 @@ export function registerV2Tools(draft) {
             description: definition.description,
             input: tool.schema.toJSONSchema(tool.schema.object(definition.args)),
             execute: async (input, context) => {
-                const result = await definition.execute(input, context);
+                const ctx = { directory, ...context };
+                const result = await definition.execute(input, ctx);
                 return typeof result === 'string' ? { content: result } : result;
             },
         };

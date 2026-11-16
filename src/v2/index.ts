@@ -55,7 +55,7 @@ export const Plugin: PluginV2 = define({
 
     if (ctx.tool && typeof ctx.tool.transform === 'function') {
       await ctx.tool.transform((draft) => {
-        registerV2Tools(draft)
+        registerV2Tools(draft, directory)
       })
     }
     const serverOptions: ServerOptions = {

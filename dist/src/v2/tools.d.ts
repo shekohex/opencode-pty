@@ -78,5 +78,5 @@ export type PTYToolName = keyof typeof ptyTools;
  *   - `args` (Zod raw shape) -> `input`: JSON Schema (Zod v4 `toJSONSchema`)
  *   - string result -> `{ content }`
  */
-export declare function registerV2Tools(draft: ToolDraft): void;
+export declare function registerV2Tools(draft: ToolDraft, directory?: string): void;
 //# sourceMappingURL=tools.d.ts.map
