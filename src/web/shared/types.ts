@@ -66,6 +66,7 @@ export interface WSMessageServer {
 export interface WSMessageServerSubscribedSession extends WSMessageServer {
   type: 'subscribed'
   sessionId: string
+  rawData: string
 }
 
 export interface WSMessageServerUnsubscribedSession extends WSMessageServer {

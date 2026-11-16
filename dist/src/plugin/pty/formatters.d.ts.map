@@ -1,0 +1,1 @@
+{"version":3,"file":"formatters.d.ts","sourceRoot":"","sources":["../../../../src/plugin/pty/formatters.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,YAAY,CAAA;AAEhD,wBAAgB,iBAAiB,CAAC,OAAO,EAAE,cAAc,GAAG,MAAM,EAAE,CAgBnE;AAED,wBAAgB,UAAU,CAAC,IAAI,EAAE,MAAM,EAAE,OAAO,EAAE,MAAM,EAAE,SAAS,GAAE,MAAa,GAAG,MAAM,CAI1F"}

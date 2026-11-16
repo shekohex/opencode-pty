@@ -1,0 +1,1 @@
+{"version":3,"file":"callback-manager.d.ts","sourceRoot":"","sources":["../../../../src/web/server/callback-manager.ts"],"names":[],"mappings":"AASA,qBAAa,eAAgB,YAAW,UAAU;IACpC,OAAO,CAAC,MAAM;gBAAN,MAAM,EAAE,GAAG,CAAC,MAAM,CAAC,SAAS,CAAC;IAMjD,OAAO,CAAC,qBAAqB,CAG5B;IAED,OAAO,CAAC,iBAAiB,CAGvB;IAEF,CAAC,MAAM,CAAC,OAAO,CAAC;CAIjB"}

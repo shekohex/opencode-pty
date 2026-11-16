@@ -4,6 +4,7 @@ import type { HostAdapter } from './types.ts'
 
 export * from './types.ts'
 export * from './v1/index.ts'
+export * from './v2/index.ts'
 
 /**
  * Installs a host adapter by connecting its notifier and permission authorizer
