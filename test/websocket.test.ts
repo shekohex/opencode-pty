@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
-import { manager } from '../src/plugin/pty/manager.ts'
+import {
+  manager,
+  registerRawOutputCallback,
+  removeRawOutputCallback,
+} from '../src/plugin/pty/manager.ts'
 import type {
   CustomError,
   WSMessageServerError,
@@ -67,6 +71,43 @@ describe('WebSocket Functionality', () => {
   })
 
   describe('WebSocket Message Handling', () => {
+    it('should send the snapshot before subsequent live output without replaying it', async () => {
+      await using client = await ManagedTestClient.create(managedTestServer.server.getWsUrl())
+      const snapshot = 'one\r\ntwo\r\n'
+      const session = manager.spawn({
+        command: 'sh',
+        args: ['-c', 'stty -echo; printf "one\\ntwo\\n"; read line; printf "three\\n"'],
+        parentSessionId: managedTestServer.sessionId,
+      })
+      // Output is delivered asynchronously, so registering after spawn misses nothing.
+      await new Promise<void>((resolve) => {
+        const onOutput = () => {
+          if (manager.getRawBuffer(session.id)?.raw === snapshot) {
+            removeRawOutputCallback(onOutput)
+            resolve()
+          }
+        }
+        registerRawOutputCallback(onOutput)
+      })
+      const subscribed = new Promise<WSMessageServerSubscribedSession>((resolve) => {
+        client.subscribedCallbacks.push(resolve)
+      })
+      let liveOutput = ''
+      const live = new Promise<void>((resolve) => {
+        client.rawDataCallbacks.push((message) => {
+          if (message.session.id === session.id) {
+            liveOutput += message.rawData
+            if (liveOutput.includes('three\r\n')) resolve()
+          }
+        })
+      })
+      client.send({ type: 'subscribe', sessionId: session.id })
+      expect((await subscribed).rawData).toBe(snapshot)
+      manager.write(session.id, 'go\n')
+      await live
+      expect(liveOutput).toBe('three\r\n')
+    }, 1000)
+
     it('should handle subscribe message', async () => {
       await using managedTestClient = await ManagedTestClient.create(
         managedTestServer.server.getWsUrl()

@@ -46,22 +46,8 @@ export class SessionLifecycleManager {
     const timeoutMs = session.timeoutSeconds * 1000
 
     const timeoutHandle = setTimeout(() => {
-      this.sessionTimeouts.delete(session.id)
-
-      const currentSession = this.sessions.get(session.id)
-      if (!currentSession || currentSession.status !== 'running') {
-        return
-      }
-
-      // Persist the timeout reason before reusing the regular kill flow.
-      currentSession.timedOut = true
-      currentSession.status = 'killing'
-
-      try {
-        currentSession.process?.kill()
-      } catch {
-        // Ignore kill errors
-      }
+      session.timedOut = true
+      this.kill(session.id)
     }, timeoutMs)
 
     this.sessionTimeouts.set(session.id, timeoutHandle)
@@ -121,21 +107,24 @@ export class SessionLifecycleManager {
     })
 
     session.process?.onExit(({ exitCode, signal }) => {
+      // Releasing the native PTY can emit onExit again synchronously.
+      if (session.exitAt) {
+        return
+      }
+
       this.clearSessionTimeout(session.id)
 
-      // Flush any remaining incomplete line in the buffer
-      session.buffer.flush()
-
-      if (session.status === 'killing') {
-        session.status = 'killed'
-      } else {
-        session.status = 'exited'
-      }
+      session.status = session.status === 'killing' ? 'killed' : 'exited'
       session.exitCode = exitCode
       session.exitSignal = signal
       // When the process stopped, so a reader can report how long it ran: the
       // buffer keeps the output but nothing else records the end.
       session.exitAt = new Date()
+      try {
+        session.process?.kill()
+      } catch {
+        // Ignore kill errors
+      }
       onExit(session, exitCode)
     })
   }
@@ -178,14 +167,10 @@ export class SessionLifecycleManager {
     return true
   }
 
-  private clearAllSessionsInternal(): void {
+  clearAllSessions(): void {
     for (const id of [...this.sessions.keys()]) {
       this.kill(id, true)
     }
-  }
-
-  clearAllSessions(): void {
-    this.clearAllSessionsInternal()
   }
 
   cleanupBySession(parentSessionId: string): void {

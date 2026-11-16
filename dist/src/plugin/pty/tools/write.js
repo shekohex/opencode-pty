@@ -1,0 +1,88 @@
+import { tool } from '@opencode-ai/plugin';
+import { manager } from "../manager.js";
+import { checkCommandPermission, permissionRequestContext } from "../permissions.js";
+import { buildSessionNotFoundError } from "../utils.js";
+import DESCRIPTION from './write.txt';
+const ETX = String.fromCharCode(3);
+const EOT = String.fromCharCode(4);
+/**
+ * Parse escape sequences in a string to their actual byte values.
+ * Handles: \n, \r, \t, \xNN (hex), \uNNNN (unicode), \\
+ */
+function parseEscapeSequences(input) {
+    return input.replace(/\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|[nrt\\])/g, (match, seq) => {
+        if (seq.startsWith('x')) {
+            return String.fromCharCode(parseInt(seq.slice(1), 16));
+        }
+        if (seq.startsWith('u')) {
+            return String.fromCharCode(parseInt(seq.slice(1), 16));
+        }
+        switch (seq) {
+            case 'n':
+                return '\n';
+            case 'r':
+                return '\r';
+            case 't':
+                return '\t';
+            case '\\':
+                return '\\';
+            default:
+                return match;
+        }
+    });
+}
+function extractCommands(data) {
+    const commands = [];
+    const lines = data.split(/[\n\r]+/);
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith(ETX) && !trimmed.startsWith(EOT)) {
+            commands.push(trimmed);
+        }
+    }
+    return commands;
+}
+function parseCommand(commandLine) {
+    const parts = commandLine.split(/\s+/).filter(Boolean);
+    const command = parts[0] ?? '';
+    const args = parts.slice(1);
+    return { command, args };
+}
+export const ptyWrite = tool({
+    description: DESCRIPTION,
+    args: {
+        id: tool.schema.string().describe('The PTY session ID (e.g., pty_a1b2c3d4)'),
+        data: tool.schema.string().describe('The input data to send to the PTY'),
+    },
+    async execute(args, ctx) {
+        const session = manager.get(args.id);
+        if (!session) {
+            throw buildSessionNotFoundError(args.id);
+        }
+        if (session.status !== 'running') {
+            throw new Error(`Cannot write to PTY '${args.id}' - session status is '${session.status}'.`);
+        }
+        // Parse escape sequences to actual bytes
+        const parsedData = parseEscapeSequences(args.data);
+        const commands = extractCommands(parsedData);
+        const permissionContext = permissionRequestContext(ctx);
+        for (const commandLine of commands) {
+            const { command, args: cmdArgs } = parseCommand(commandLine);
+            if (command) {
+                await checkCommandPermission(command, cmdArgs, permissionContext);
+            }
+        }
+        const success = manager.write(args.id, parsedData);
+        if (!success) {
+            throw new Error(`Failed to write to PTY '${args.id}'.`);
+        }
+        const preview = args.data.length > 50 ? `${args.data.slice(0, 50)}...` : args.data;
+        const displayPreview = preview
+            .replace(new RegExp(ETX, 'g'), '^C')
+            .replace(new RegExp(EOT, 'g'), '^D')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r');
+        return `Sent ${args.data.length} bytes to ${args.id}: "${displayPreview}"`;
+    },
+});
+//# sourceMappingURL=write.js.map
