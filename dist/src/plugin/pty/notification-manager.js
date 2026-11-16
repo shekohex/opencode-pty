@@ -49,20 +49,10 @@ export class NotificationManager {
  */
 export function buildExitNotification(session, exitCode) {
     const lineCount = session.buffer.length;
-    let lastLine = '';
-    if (lineCount > 0) {
-        for (let i = lineCount - 1; i >= 0; i--) {
-            const bufferLines = session.buffer.read(i, 1);
-            const line = bufferLines[0];
-            if (line !== undefined && line.trim() !== '') {
-                lastLine =
-                    line.length > NOTIFICATION_LINE_TRUNCATE
-                        ? `${line.slice(0, NOTIFICATION_LINE_TRUNCATE)}...`
-                        : line;
-                break;
-            }
-        }
-    }
+    const line = session.buffer.read().findLast((line) => line.trim() !== '') ?? '';
+    const lastLine = line.length > NOTIFICATION_LINE_TRUNCATE
+        ? `${line.slice(0, NOTIFICATION_LINE_TRUNCATE)}...`
+        : line;
     const displayTitle = session.description ?? session.title;
     const truncatedTitle = displayTitle.length > NOTIFICATION_TITLE_TRUNCATE
         ? `${displayTitle.slice(0, NOTIFICATION_TITLE_TRUNCATE)}...`

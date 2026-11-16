@@ -11,6 +11,7 @@ export class OutputManager {
   }
 
   read(session: PTYSession, offset: number = 0, limit?: number): ReadResult {
+    offset = Math.max(0, offset)
     const lines = session.buffer.read(offset, limit)
     const totalLines = session.buffer.length
     const hasMore = offset + lines.length < totalLines
@@ -18,6 +19,7 @@ export class OutputManager {
   }
 
   search(session: PTYSession, pattern: RegExp, offset: number = 0, limit?: number): SearchResult {
+    offset = Math.max(0, offset)
     const allMatches = session.buffer.search(pattern)
     const totalMatches = allMatches.length
     const totalLines = session.buffer.length

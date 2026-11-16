@@ -9,12 +9,14 @@ export class OutputManager {
         }
     }
     read(session, offset = 0, limit) {
+        offset = Math.max(0, offset);
         const lines = session.buffer.read(offset, limit);
         const totalLines = session.buffer.length;
         const hasMore = offset + lines.length < totalLines;
         return { lines, totalLines, offset, hasMore };
     }
     search(session, pattern, offset = 0, limit) {
+        offset = Math.max(0, offset);
         const allMatches = session.buffer.search(pattern);
         const totalMatches = allMatches.length;
         const totalLines = session.buffer.length;
